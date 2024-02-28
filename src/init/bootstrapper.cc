@@ -1729,22 +1729,20 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
 #undef PLAIN_DATE_GETTER_LIST_INTL
 #undef INSTALL_PLAIN_DATE_GETTER_FUNC
 
-#define PLAIN_DATE_FUNC_LIST(V)            \
-  V(toPlainYearMonth, ToPlainYearMonth, 0) \
-  V(toPlainMonthDay, ToPlainMonthDay, 0)   \
-  V(getISOFiels, GetISOFields, 0)          \
-  V(add, Add, 1)                           \
-  V(subtract, Subtract, 1)                 \
-  V(with, With, 1)                         \
-  V(withCalendar, WithCalendar, 1)         \
-  V(until, Until, 1)                       \
-  V(since, Since, 1)                       \
-  V(equals, Equals, 1)                     \
-  V(getISOFields, GetISOFields, 0)         \
-  V(toLocaleString, ToLocaleString, 0)     \
-  V(toPlainDateTime, ToPlainDateTime, 0)   \
-  V(toZonedDateTime, ToZonedDateTime, 1)   \
-  V(toString, ToString, 0)                 \
+#define PLAIN_DATE_FUNC_LIST(V)          \
+  V(getISOFiels, GetISOFields, 0)        \
+  V(add, Add, 1)                         \
+  V(subtract, Subtract, 1)               \
+  V(with, With, 1)                       \
+  V(withCalendar, WithCalendar, 1)       \
+  V(until, Until, 1)                     \
+  V(since, Since, 1)                     \
+  V(equals, Equals, 1)                   \
+  V(getISOFields, GetISOFields, 0)       \
+  V(toLocaleString, ToLocaleString, 0)   \
+  V(toPlainDateTime, ToPlainDateTime, 0) \
+  V(toZonedDateTime, ToZonedDateTime, 1) \
+  V(toString, ToString, 0)               \
   V(toJSON, ToJSON, 0)
 
 #define INSTALL_PLAIN_DATE_FUNC(p, N, min)      \
@@ -1864,25 +1862,23 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
 #undef PLAIN_DATE_TIME_GETTER_LIST_INTL
 #undef INSTALL_PLAIN_DATE_TIME_GETTER_FUNC
 
-#define PLAIN_DATE_TIME_FUNC_LIST(V)       \
-  V(with, With, 1)                         \
-  V(withPlainTime, WithPlainTime, 0)       \
-  V(withPlainDate, WithPlainDate, 1)       \
-  V(withCalendar, WithCalendar, 1)         \
-  V(add, Add, 1)                           \
-  V(subtract, Subtract, 1)                 \
-  V(until, Until, 1)                       \
-  V(since, Since, 1)                       \
-  V(round, Round, 1)                       \
-  V(equals, Equals, 1)                     \
-  V(toLocaleString, ToLocaleString, 0)     \
-  V(toJSON, ToJSON, 0)                     \
-  V(toString, ToString, 0)                 \
-  V(toZonedDateTime, ToZonedDateTime, 1)   \
-  V(toPlainDate, ToPlainDate, 0)           \
-  V(toPlainYearMonth, ToPlainYearMonth, 0) \
-  V(toPlainMonthDay, ToPlainMonthDay, 0)   \
-  V(toPlainTime, ToPlainTime, 0)           \
+#define PLAIN_DATE_TIME_FUNC_LIST(V)     \
+  V(with, With, 1)                       \
+  V(withPlainTime, WithPlainTime, 0)     \
+  V(withPlainDate, WithPlainDate, 1)     \
+  V(withCalendar, WithCalendar, 1)       \
+  V(add, Add, 1)                         \
+  V(subtract, Subtract, 1)               \
+  V(until, Until, 1)                     \
+  V(since, Since, 1)                     \
+  V(round, Round, 1)                     \
+  V(equals, Equals, 1)                   \
+  V(toLocaleString, ToLocaleString, 0)   \
+  V(toJSON, ToJSON, 0)                   \
+  V(toString, ToString, 0)               \
+  V(toZonedDateTime, ToZonedDateTime, 1) \
+  V(toPlainDate, ToPlainDate, 0)         \
+  V(toPlainTime, ToPlainTime, 0)         \
   V(getISOFields, GetISOFields, 0)
 
 #define INSTALL_PLAIN_DATE_TIME_FUNC(p, N, min)                           \
@@ -1983,28 +1979,26 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
 #undef ZONED_DATE_TIME_GETTER_LIST
 #undef INSTALL_ZONED_DATE_TIME_GETTER_FUNC
 
-#define ZONED_DATE_TIME_FUNC_LIST(V)       \
-  V(with, With, 1)                         \
-  V(withPlainTime, WithPlainTime, 0)       \
-  V(withPlainDate, WithPlainDate, 1)       \
-  V(withTimeZone, WithTimeZone, 1)         \
-  V(withCalendar, WithCalendar, 1)         \
-  V(add, Add, 1)                           \
-  V(subtract, Subtract, 1)                 \
-  V(until, Until, 1)                       \
-  V(since, Since, 1)                       \
-  V(round, Round, 1)                       \
-  V(equals, Equals, 1)                     \
-  V(toLocaleString, ToLocaleString, 0)     \
-  V(toString, ToString, 0)                 \
-  V(toJSON, ToJSON, 0)                     \
-  V(startOfDay, StartOfDay, 0)             \
-  V(toInstant, ToInstant, 0)               \
-  V(toPlainDate, ToPlainDate, 0)           \
-  V(toPlainTime, ToPlainTime, 0)           \
-  V(toPlainDateTime, ToPlainDateTime, 0)   \
-  V(toPlainYearMonth, ToPlainYearMonth, 0) \
-  V(toPlainMonthDay, ToPlainMonthDay, 0)   \
+#define ZONED_DATE_TIME_FUNC_LIST(V)     \
+  V(with, With, 1)                       \
+  V(withPlainTime, WithPlainTime, 0)     \
+  V(withPlainDate, WithPlainDate, 1)     \
+  V(withTimeZone, WithTimeZone, 1)       \
+  V(withCalendar, WithCalendar, 1)       \
+  V(add, Add, 1)                         \
+  V(subtract, Subtract, 1)               \
+  V(until, Until, 1)                     \
+  V(since, Since, 1)                     \
+  V(round, Round, 1)                     \
+  V(equals, Equals, 1)                   \
+  V(toLocaleString, ToLocaleString, 0)   \
+  V(toString, ToString, 0)               \
+  V(toJSON, ToJSON, 0)                   \
+  V(startOfDay, StartOfDay, 0)           \
+  V(toInstant, ToInstant, 0)             \
+  V(toPlainDate, ToPlainDate, 0)         \
+  V(toPlainTime, ToPlainTime, 0)         \
+  V(toPlainDateTime, ToPlainDateTime, 0) \
   V(getISOFields, GetISOFields, 0)
 
 #define INSTALL_ZONED_DATE_TIME_FUNC(p, N, min)                           \
@@ -2115,103 +2109,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
 #undef INSTANT_FUNC_LIST
 #undef INSTALL_INSTANT_FUNC
   }
-  {  // -- P l a i n Y e a r M o n t h
-    // #sec-temporal-plainyearmonth-objects
-    // #sec-temporal.plainyearmonth
-    INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(PlainYearMonth, PLAIN_YEAR_MONTH, 2)
-    INSTALL_TEMPORAL_FUNC(PlainYearMonth, from, From, 1)
-    INSTALL_TEMPORAL_FUNC(PlainYearMonth, compare, Compare, 2)
-
-    InstallTemporalCalendarGetter(isolate, prototype, kPlainYearMonth);
-
-#ifdef V8_INTL_SUPPORT
-#define PLAIN_YEAR_MONTH_GETTER_LIST_INTL(V) \
-  V(era)                                     \
-  V(eraYear)
-#else
-#define PLAIN_YEAR_MONTH_GETTER_LIST_INTL(V)
-#endif  // V8_INTL_SUPPORT
-
-#define PLAIN_YEAR_MONTH_GETTER_LIST(V) \
-  PLAIN_YEAR_MONTH_GETTER_LIST_INTL(V)  \
-  V(year)                               \
-  V(month)                              \
-  V(monthCode)                          \
-  V(daysInYear)                         \
-  V(daysInMonth)                        \
-  V(monthsInYear)                       \
-  V(inLeapYear)
-
-#define INSTALL_PLAIN_YEAR_MONTH_GETTER_FUNC(p)                               \
-  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                        Builtin::kTemporalObjectCalendarDelegateGetter,       \
-                        kPlainYearMonth);
-
-    PLAIN_YEAR_MONTH_GETTER_LIST(INSTALL_PLAIN_YEAR_MONTH_GETTER_FUNC)
-#undef PLAIN_YEAR_MONTH_GETTER_LIST
-#undef PLAIN_YEAR_MONTH_GETTER_LIST_INTL
-#undef INSTALL_PLAIN_YEAR_MONTH_GETTER_FUNC
-
-#define PLAIN_YEAR_MONTH_FUNC_LIST(V)  \
-  V(with, With, 1)                     \
-  V(add, Add, 1)                       \
-  V(subtract, Subtract, 1)             \
-  V(until, Until, 1)                   \
-  V(since, Since, 1)                   \
-  V(equals, Equals, 1)                 \
-  V(toLocaleString, ToLocaleString, 0) \
-  V(toString, ToString, 0)             \
-  V(toJSON, ToJSON, 0)                 \
-  V(toPlainDate, ToPlainDate, 1)       \
-  V(getISOFields, GetISOFields, 0)
-
-#define INSTALL_PLAIN_YEAR_MONTH_FUNC(p, N, min)                           \
-  SimpleInstallFunction(isolate, prototype, #p,                            \
-                        Builtin::kTemporalPlainYearMonthPrototype##N, min, \
-                        false);
-    PLAIN_YEAR_MONTH_FUNC_LIST(INSTALL_PLAIN_YEAR_MONTH_FUNC)
-#undef PLAIN_YEAR_MONTH_FUNC_LIST
-#undef INSTALL_PLAIN_YEAR_MONTH_FUNC
-  }
-  {  // -- P l a i n M o n t h D a y
-    // #sec-temporal-plainmonthday-objects
-    // #sec-temporal.plainmonthday
-    INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(PlainMonthDay, PLAIN_MONTH_DAY, 2)
-    INSTALL_TEMPORAL_FUNC(PlainMonthDay, from, From, 1)
-    // Notice there are no Temporal.PlainMonthDay.compare in the spec.
-
-    InstallTemporalCalendarGetter(isolate, prototype, kPlainMonthDay);
-
-#define PLAIN_MONTH_DAY_GETTER_LIST(V) \
-  V(monthCode)                         \
-  V(day)
-
-#define INSTALL_PLAIN_MONTH_DAY_GETTER_FUNC(p)                                \
-  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                        Builtin::kTemporalObjectCalendarDelegateGetter,       \
-                        kPlainMonthDay);
-
-    PLAIN_MONTH_DAY_GETTER_LIST(INSTALL_PLAIN_MONTH_DAY_GETTER_FUNC)
-#undef PLAIN_MONTH_DAY_GETTER_LIST
-#undef INSTALL_PLAIN_MONTH_DAY_GETTER_FUNC
-
-#define PLAIN_MONTH_DAY_FUNC_LIST(V)   \
-  V(with, With, 1)                     \
-  V(equals, Equals, 1)                 \
-  V(toLocaleString, ToLocaleString, 0) \
-  V(toString, ToString, 0)             \
-  V(toJSON, ToJSON, 0)                 \
-  V(toPlainDate, ToPlainDate, 1)       \
-  V(getISOFields, GetISOFields, 0)
-
-#define INSTALL_PLAIN_MONTH_DAY_FUNC(p, N, min)                           \
-  SimpleInstallFunction(isolate, prototype, #p,                           \
-                        Builtin::kTemporalPlainMonthDayPrototype##N, min, \
-                        false);
-    PLAIN_MONTH_DAY_FUNC_LIST(INSTALL_PLAIN_MONTH_DAY_FUNC)
-#undef PLAIN_MONTH_DAY_FUNC_LIST
-#undef INSTALL_PLAIN_MONTH_DAY_FUNC
-  }
   {  // -- T i m e Z o n e
     // #sec-temporal-timezone-objects
     // #sec-temporal.timezone
@@ -2258,28 +2155,26 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
 #define CALENDAR_FUNC_LIST_INTL(V)
 #endif  // V8_INTL_SUPPORT
 
-#define CALENDAR_FUNC_LIST(V)                    \
-  CALENDAR_FUNC_LIST_INTL(V)                     \
-  V(dateFromFields, DateFromFields, 1)           \
-  V(yearMonthFromFields, YearMonthFromFields, 1) \
-  V(monthDayFromFields, MonthDayFromFields, 1)   \
-  V(dateAdd, DateAdd, 2)                         \
-  V(dateUntil, DateUntil, 2)                     \
-  V(year, Year, 1)                               \
-  V(month, Month, 1)                             \
-  V(monthCode, MonthCode, 1)                     \
-  V(day, Day, 1)                                 \
-  V(dayOfWeek, DayOfWeek, 1)                     \
-  V(dayOfYear, DayOfYear, 1)                     \
-  V(weekOfYear, WeekOfYear, 1)                   \
-  V(daysInWeek, DaysInWeek, 1)                   \
-  V(daysInMonth, DaysInMonth, 1)                 \
-  V(daysInYear, DaysInYear, 1)                   \
-  V(monthsInYear, MonthsInYear, 1)               \
-  V(inLeapYear, InLeapYear, 1)                   \
-  V(fields, Fields, 1)                           \
-  V(mergeFields, MergeFields, 2)                 \
-  V(toString, ToString, 0)                       \
+#define CALENDAR_FUNC_LIST(V)          \
+  CALENDAR_FUNC_LIST_INTL(V)           \
+  V(dateFromFields, DateFromFields, 1) \
+  V(dateAdd, DateAdd, 2)               \
+  V(dateUntil, DateUntil, 2)           \
+  V(year, Year, 1)                     \
+  V(month, Month, 1)                   \
+  V(monthCode, MonthCode, 1)           \
+  V(day, Day, 1)                       \
+  V(dayOfWeek, DayOfWeek, 1)           \
+  V(dayOfYear, DayOfYear, 1)           \
+  V(weekOfYear, WeekOfYear, 1)         \
+  V(daysInWeek, DaysInWeek, 1)         \
+  V(daysInMonth, DaysInMonth, 1)       \
+  V(daysInYear, DaysInYear, 1)         \
+  V(monthsInYear, MonthsInYear, 1)     \
+  V(inLeapYear, InLeapYear, 1)         \
+  V(fields, Fields, 1)                 \
+  V(mergeFields, MergeFields, 2)       \
+  V(toString, ToString, 0)             \
   V(toJSON, ToJSON, 0)
 
 #define INSTALL_CALENDAR_FUNC(p, N, min)        \

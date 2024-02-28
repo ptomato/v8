@@ -956,34 +956,6 @@ int32_t ScanDateSpecYearMonth(base::Vector<Char> str, int32_t s,
   return cur - s;
 }
 
-// DateSpecMonthDay:
-//   [TwoDash] DateMonth [-] DateDay
-template <typename Char>
-int32_t ScanDateSpecMonthDay(base::Vector<Char> str, int32_t s,
-                             ParsedISO8601Result* r) {
-  if (str.length() < (s + 4)) return 0;
-  int32_t cur = s;
-  if (str[cur] == '-') {
-    // The first two dash are optional together
-    if (str[++cur] != '-') return 0;
-    // TwoDash
-    cur++;
-  }
-  int32_t date_month, date_day;
-  int32_t len = ScanDateMonth(str, cur, &date_month);
-  if (len == 0) return 0;
-  cur += len;
-  if (str.length() < (cur + 1)) return 0;
-  // '-'
-  if (str[cur] == '-') cur++;
-  len = ScanDateDay(str, cur, &date_day);
-  if (len == 0) return 0;
-  r->date_month = date_month;
-  r->date_day = date_day;
-  cur += len;
-  return cur - s;
-}
-
 // TimeZoneIdentifier :
 //   TimeZoneIANAName
 //   TimeZoneUTCOffsetName
@@ -1055,13 +1027,6 @@ int32_t ScanTemporalZonedDateTimeString(base::Vector<Char> str, int32_t s,
 
 SCAN_FORWARD(TemporalDateTimeString, CalendarDateTime, ParsedISO8601Result)
 
-// TemporalMonthDayString
-//   DateSpecMonthDay
-//   CalendarDateTime
-// The lookahead is at most 5 chars.
-SCAN_EITHER_FORWARD(TemporalMonthDayString, DateSpecMonthDay, CalendarDateTime,
-                    ParsedISO8601Result)
-
 // TemporalInstantString
 //   Date [TimeSpecSeparator] TimeZoneOffsetRequired [Calendar]
 template <typename Char>
@@ -1113,8 +1078,6 @@ int32_t ScanTemporalInstantString(base::Vector<Char> str, int32_t s,
 
 SATISIFY(TemporalDateTimeString, ParsedISO8601Result)
 SATISIFY(DateTime, ParsedISO8601Result)
-SATISIFY(DateSpecYearMonth, ParsedISO8601Result)
-SATISIFY(DateSpecMonthDay, ParsedISO8601Result)
 SATISIFY(CalendarDateTime, ParsedISO8601Result)
 SATISIFY(CalendarTime_L1, ParsedISO8601Result)
 SATISIFY(CalendarTime_L2, ParsedISO8601Result)
@@ -1127,10 +1090,6 @@ bool SatisfyCalendarTime(base::Vector<Char> str, ParsedISO8601Result* r) {
 }
 SATISIFY(CalendarDateTimeTimeRequired, ParsedISO8601Result)
 SATISIFY_EITHER(TemporalTimeString, CalendarTime, CalendarDateTimeTimeRequired,
-                ParsedISO8601Result)
-SATISIFY_EITHER(TemporalYearMonthString, DateSpecYearMonth, CalendarDateTime,
-                ParsedISO8601Result)
-SATISIFY_EITHER(TemporalMonthDayString, DateSpecMonthDay, CalendarDateTime,
                 ParsedISO8601Result)
 SATISIFY(TimeZoneNumericUTCOffset, ParsedISO8601Result)
 SATISIFY(TimeZoneIdentifier, ParsedISO8601Result)
@@ -1393,8 +1352,6 @@ SATISIFY(TemporalDurationString, ParsedISO8601Duration)
   }
 
 IMPL_PARSE_METHOD(ParsedISO8601Result, TemporalDateTimeString)
-IMPL_PARSE_METHOD(ParsedISO8601Result, TemporalYearMonthString)
-IMPL_PARSE_METHOD(ParsedISO8601Result, TemporalMonthDayString)
 IMPL_PARSE_METHOD(ParsedISO8601Result, TemporalTimeString)
 IMPL_PARSE_METHOD(ParsedISO8601Result, TemporalInstantString)
 IMPL_PARSE_METHOD(ParsedISO8601Result, TemporalZonedDateTimeString)

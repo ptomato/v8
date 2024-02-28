@@ -1192,10 +1192,6 @@ namespace internal {
   CPP(TemporalPlainDateFrom)                                                   \
   /* Temporal #sec-temporal.plaindate.compare */                               \
   CPP(TemporalPlainDateCompare)                                                \
-  /* Temporal #sec-temporal.plaindate.prototype.toplainyearmonth */            \
-  CPP(TemporalPlainDatePrototypeToPlainYearMonth)                              \
-  /* Temporal #sec-temporal.plaindate.prototype.toplainmonthday */             \
-  CPP(TemporalPlainDatePrototypeToPlainMonthDay)                               \
   /* Temporal #sec-temporal.plaindate.prototype.getisofields */                \
   CPP(TemporalPlainDatePrototypeGetISOFields)                                  \
   /* Temporal #sec-temporal.plaindate.prototype.add */                         \
@@ -1294,10 +1290,6 @@ namespace internal {
   CPP(TemporalPlainDateTimePrototypeToZonedDateTime)                           \
   /* Temporal #sec-temporal.plaindatetime.prototype.toplaindate */             \
   CPP(TemporalPlainDateTimePrototypeToPlainDate)                               \
-  /* Temporal #sec-temporal.plaindatetime.prototype.toplainyearmonth */        \
-  CPP(TemporalPlainDateTimePrototypeToPlainYearMonth)                          \
-  /* Temporal #sec-temporal.plaindatetime.prototype.toplainmonthday */         \
-  CPP(TemporalPlainDateTimePrototypeToPlainMonthDay)                           \
   /* Temporal #sec-temporal.plaindatetime.prototype.toplaintime */             \
   CPP(TemporalPlainDateTimePrototypeToPlainTime)                               \
   /* Temporal #sec-temporal.plaindatetime.prototype.getisofields */            \
@@ -1356,10 +1348,6 @@ namespace internal {
   CPP(TemporalZonedDateTimePrototypeToPlainTime)                               \
   /* Temporal #sec-temporal.zoneddatetime.prototype.toplaindatetime */         \
   CPP(TemporalZonedDateTimePrototypeToPlainDateTime)                           \
-  /* Temporal #sec-temporal.zoneddatetime.prototype.toplainyearmonth */        \
-  CPP(TemporalZonedDateTimePrototypeToPlainYearMonth)                          \
-  /* Temporal #sec-temporal.zoneddatetime.prototype.toplainmonthday */         \
-  CPP(TemporalZonedDateTimePrototypeToPlainMonthDay)                           \
   /* Temporal #sec-temporal.zoneddatetime.prototype.getisofields */            \
   CPP(TemporalZonedDateTimePrototypeGetISOFields)                              \
                                                                                \
@@ -1453,58 +1441,6 @@ namespace internal {
   /* Temporal #sec-temporal.instant.prototype.tozoneddatetimeiso */            \
   CPP(TemporalInstantPrototypeToZonedDateTimeISO)                              \
                                                                                \
-  /* Temporal.PlainYearMonth */                                                \
-  /* Temporal #sec-temporal.plainyearmonth */                                  \
-  CPP(TemporalPlainYearMonthConstructor)                                       \
-  /* Temporal #sec-temporal.plainyearmonth.from */                             \
-  CPP(TemporalPlainYearMonthFrom)                                              \
-  /* Temporal #sec-temporal.plainyearmonth.compare */                          \
-  CPP(TemporalPlainYearMonthCompare)                                           \
-  /* Temporal #sec-temporal.plainyearmonth.prototype.with */                   \
-  CPP(TemporalPlainYearMonthPrototypeWith)                                     \
-  /* Temporal #sec-temporal.plainyearmonth.prototype.add */                    \
-  CPP(TemporalPlainYearMonthPrototypeAdd)                                      \
-  /* Temporal #sec-temporal.plainyearmonth.prototype.subtract */               \
-  CPP(TemporalPlainYearMonthPrototypeSubtract)                                 \
-  /* Temporal #sec-temporal.plainyearmonth.prototype.until */                  \
-  CPP(TemporalPlainYearMonthPrototypeUntil)                                    \
-  /* Temporal #sec-temporal.plainyearmonth.prototype.since */                  \
-  CPP(TemporalPlainYearMonthPrototypeSince)                                    \
-  /* Temporal #sec-temporal.plainyearmonth.prototype.equals */                 \
-  CPP(TemporalPlainYearMonthPrototypeEquals)                                   \
-  /* Temporal #sec-temporal.plainyearmonth.tostring */                         \
-  CPP(TemporalPlainYearMonthPrototypeToString)                                 \
-  /* Temporal #sec-temporal.plainyearmonth.tojson */                           \
-  CPP(TemporalPlainYearMonthPrototypeToJSON)                                   \
-  /* Temporal #sec-temporal.plainyearmonth.prototype.tolocalestring */         \
-  CPP(TemporalPlainYearMonthPrototypeToLocaleString)                           \
-  /* Temporal #sec-temporal.plainyearmonth.prototype.toplaindate */            \
-  CPP(TemporalPlainYearMonthPrototypeToPlainDate)                              \
-  /* Temporal #sec-temporal.plainyearmonth.prototype.getisofields */           \
-  CPP(TemporalPlainYearMonthPrototypeGetISOFields)                             \
-                                                                               \
-  /* Temporal.PlainMonthDay */                                                 \
-  /* Temporal #sec-temporal.plainmonthday */                                   \
-  CPP(TemporalPlainMonthDayConstructor)                                        \
-  /* Temporal #sec-temporal.plainmonthday.from */                              \
-  CPP(TemporalPlainMonthDayFrom)                                               \
-  /* There are no compare for PlainMonthDay */                                 \
-  /* See https://github.com/tc39/proposal-temporal/issues/1547 */              \
-  /* Temporal #sec-get-temporal.plainmonthday.prototype.calendar */            \
-  CPP(TemporalPlainMonthDayPrototypeWith)                                      \
-  /* Temporal #sec-temporal.plainmonthday.prototype.equals */                  \
-  CPP(TemporalPlainMonthDayPrototypeEquals)                                    \
-  /* Temporal #sec-temporal.plainmonthday.prototype.tostring */                \
-  CPP(TemporalPlainMonthDayPrototypeToString)                                  \
-  /* Temporal #sec-temporal.plainmonthday.tojson */                            \
-  CPP(TemporalPlainMonthDayPrototypeToJSON)                                    \
-  /* Temporal #sec-temporal.plainmonthday.prototype.tolocalestring */          \
-  CPP(TemporalPlainMonthDayPrototypeToLocaleString)                            \
-  /* Temporal #sec-temporal.plainmonthday.prototype.toplaindate */             \
-  CPP(TemporalPlainMonthDayPrototypeToPlainDate)                               \
-  /* Temporal #sec-temporal.plainmonthday.prototype.getisofields */            \
-  CPP(TemporalPlainMonthDayPrototypeGetISOFields)                              \
-                                                                               \
   /* Temporal.TimeZone */                                                      \
   /* Temporal #sec-temporal.timezone */                                        \
   CPP(TemporalTimeZoneConstructor)                                             \
@@ -1540,10 +1476,6 @@ namespace internal {
   CPP(TemporalCalendarPrototypeId)                                             \
   /* Temporal #sec-temporal.calendar.prototype.datefromfields */               \
   CPP(TemporalCalendarPrototypeDateFromFields)                                 \
-  /* Temporal #sec-temporal.calendar.prototype.yearmonthfromfields */          \
-  CPP(TemporalCalendarPrototypeYearMonthFromFields)                            \
-  /* Temporal #sec-temporal.calendar.prototype.monthdayfromfields */           \
-  CPP(TemporalCalendarPrototypeMonthDayFromFields)                             \
   /* Temporal #sec-temporal.calendar.prototype.dateadd */                      \
   CPP(TemporalCalendarPrototypeDateAdd)                                        \
   /* Temporal #sec-temporal.calendar.prototype.dateuntil */                    \

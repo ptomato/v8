@@ -109,8 +109,8 @@ namespace internal {
   }
 
 static const char* temporal_constructor_names[kNumTemporalConstructors] = {
-    "Duration",      "Instant",   "PlainDate",      "PlainDateTime",
-    "PlainMonthDay", "PlainTime", "PlainYearMonth", "ZonedDateTime",
+    "Duration",      "Instant",   "PlainDate",
+    "PlainDateTime", "PlainTime", "ZonedDateTime",
 };
 static_assert(
     sizeof(temporal_constructor_names) / sizeof(*temporal_constructor_names) ==
@@ -162,16 +162,6 @@ BUILTIN(TemporalObjectCalendarGetter) {
       return date_time->calendar();
     }
 
-    case kPlainYearMonth: {
-      CHECK_RECEIVER(JSTemporalPlainYearMonth, year_month, getter_name.c_str());
-      return year_month->calendar();
-    }
-
-    case kPlainMonthDay: {
-      CHECK_RECEIVER(JSTemporalPlainMonthDay, month_day, getter_name.c_str());
-      return month_day->calendar();
-    }
-
     case kZonedDateTime: {
       CHECK_RECEIVER(JSTemporalZonedDateTime, zdt, getter_name.c_str());
       return zdt->calendar();
@@ -209,18 +199,6 @@ BUILTIN(TemporalObjectCalendarDelegateGetter) {
       CHECK_RECEIVER(JSTemporalPlainDateTime, date_time, getter_name.c_str());
       calendar = handle(date_time->calendar(), isolate);
       arg = date_time;
-    } break;
-
-    case kPlainYearMonth: {
-      CHECK_RECEIVER(JSTemporalPlainYearMonth, year_month, getter_name.c_str());
-      calendar = handle(year_month->calendar(), isolate);
-      arg = year_month;
-    } break;
-
-    case kPlainMonthDay: {
-      CHECK_RECEIVER(JSTemporalPlainMonthDay, month_day, getter_name.c_str());
-      calendar = handle(month_day->calendar(), isolate);
-      arg = month_day;
     } break;
 
     case kZonedDateTime: {
@@ -431,8 +409,6 @@ BUILTIN(TemporalPlainDateConstructor) {
 }
 TEMPORAL_METHOD2(PlainDate, From)
 TEMPORAL_METHOD2(PlainDate, Compare)
-TEMPORAL_PROTOTYPE_METHOD0(PlainDate, ToPlainYearMonth, toPlainYearMonth)
-TEMPORAL_PROTOTYPE_METHOD0(PlainDate, ToPlainMonthDay, toPlainMonthDay)
 TEMPORAL_PROTOTYPE_METHOD2(PlainDate, Add, add)
 TEMPORAL_PROTOTYPE_METHOD2(PlainDate, Subtract, subtract)
 TEMPORAL_PROTOTYPE_METHOD1(PlainDate, WithCalendar, withCalendar)
@@ -498,8 +474,6 @@ TEMPORAL_PROTOTYPE_METHOD1(PlainDateTime, WithPlainTime, withPlainTime)
 TEMPORAL_METHOD2(PlainDateTime, From)
 TEMPORAL_METHOD2(PlainDateTime, Compare)
 TEMPORAL_PROTOTYPE_METHOD1(PlainDateTime, Equals, equals)
-TEMPORAL_PROTOTYPE_METHOD0(PlainDateTime, ToPlainYearMonth, toPlainYearMonth)
-TEMPORAL_PROTOTYPE_METHOD0(PlainDateTime, ToPlainMonthDay, toPlainMonthDay)
 TEMPORAL_PROTOTYPE_METHOD2(PlainDateTime, ToZonedDateTime, toZonedDateTime)
 TEMPORAL_PROTOTYPE_METHOD0(PlainDateTime, GetISOFields, getISOFields)
 TEMPORAL_PROTOTYPE_METHOD1(PlainDateTime, WithPlainDate, withPlainDate)
@@ -514,51 +488,6 @@ TEMPORAL_PROTOTYPE_METHOD0(PlainDateTime, ToJSON, toJSON)
 TEMPORAL_PROTOTYPE_METHOD2(PlainDateTime, ToLocaleString, toLocaleString)
 TEMPORAL_PROTOTYPE_METHOD1(PlainDateTime, ToString, toString)
 TEMPORAL_PROTOTYPE_METHOD2(PlainDateTime, Until, until)
-
-// PlainYearMonth
-BUILTIN(TemporalPlainYearMonthConstructor) {
-  HandleScope scope(isolate);
-  RETURN_RESULT_OR_FAILURE(
-      isolate, JSTemporalPlainYearMonth::Constructor(
-                   isolate, args.target(), args.new_target(),
-                   args.atOrUndefined(isolate, 1),    // iso_year
-                   args.atOrUndefined(isolate, 2),    // iso_month
-                   args.atOrUndefined(isolate, 3),    // calendar_like
-                   args.atOrUndefined(isolate, 4)));  // reference_iso_day
-}
-TEMPORAL_METHOD2(PlainYearMonth, From)
-TEMPORAL_METHOD2(PlainYearMonth, Compare)
-TEMPORAL_PROTOTYPE_METHOD2(PlainYearMonth, Add, add)
-TEMPORAL_PROTOTYPE_METHOD2(PlainYearMonth, Subtract, subtract)
-TEMPORAL_PROTOTYPE_METHOD1(PlainYearMonth, Equals, equals)
-TEMPORAL_PROTOTYPE_METHOD2(PlainYearMonth, With, with)
-TEMPORAL_PROTOTYPE_METHOD1(PlainYearMonth, ToPlainDate, toPlainDate)
-TEMPORAL_PROTOTYPE_METHOD0(PlainYearMonth, GetISOFields, getISOFields)
-TEMPORAL_PROTOTYPE_METHOD2(PlainYearMonth, Since, since)
-TEMPORAL_PROTOTYPE_METHOD2(PlainYearMonth, ToLocaleString, toLocaleString)
-TEMPORAL_PROTOTYPE_METHOD0(PlainYearMonth, ToJSON, toJSON)
-TEMPORAL_PROTOTYPE_METHOD1(PlainYearMonth, ToString, toString)
-TEMPORAL_PROTOTYPE_METHOD2(PlainYearMonth, Until, until)
-
-// PlainMonthDay
-BUILTIN(TemporalPlainMonthDayConstructor) {
-  HandleScope scope(isolate);
-  RETURN_RESULT_OR_FAILURE(
-      isolate, JSTemporalPlainMonthDay::Constructor(
-                   isolate, args.target(), args.new_target(),
-                   args.atOrUndefined(isolate, 1),    // iso_month
-                   args.atOrUndefined(isolate, 2),    // iso_day
-                   args.atOrUndefined(isolate, 3),    // calendar_like
-                   args.atOrUndefined(isolate, 4)));  // reference_iso_year
-}
-TEMPORAL_METHOD2(PlainMonthDay, From)
-TEMPORAL_PROTOTYPE_METHOD1(PlainMonthDay, Equals, equals)
-TEMPORAL_PROTOTYPE_METHOD2(PlainMonthDay, With, with)
-TEMPORAL_PROTOTYPE_METHOD1(PlainMonthDay, ToPlainDate, toPlainDate)
-TEMPORAL_PROTOTYPE_METHOD0(PlainMonthDay, GetISOFields, getISOFields)
-TEMPORAL_PROTOTYPE_METHOD0(PlainMonthDay, ToJSON, toJSON)
-TEMPORAL_PROTOTYPE_METHOD2(PlainMonthDay, ToLocaleString, toLocaleString)
-TEMPORAL_PROTOTYPE_METHOD1(PlainMonthDay, ToString, toString)
 
 // ZonedDateTime
 
@@ -581,8 +510,6 @@ TEMPORAL_PROTOTYPE_METHOD1(ZonedDateTime, WithCalendar, withCalendar)
 TEMPORAL_PROTOTYPE_METHOD1(ZonedDateTime, WithPlainDate, withPlainDate)
 TEMPORAL_PROTOTYPE_METHOD1(ZonedDateTime, WithPlainTime, withPlainTime)
 TEMPORAL_PROTOTYPE_METHOD1(ZonedDateTime, WithTimeZone, withTimeZone)
-TEMPORAL_PROTOTYPE_METHOD0(ZonedDateTime, ToPlainYearMonth, toPlainYearMonth)
-TEMPORAL_PROTOTYPE_METHOD0(ZonedDateTime, ToPlainMonthDay, toPlainMonthDay)
 TEMPORAL_PROTOTYPE_METHOD1(ZonedDateTime, Round, round)
 TEMPORAL_PROTOTYPE_METHOD2(ZonedDateTime, Add, add)
 TEMPORAL_PROTOTYPE_METHOD2(ZonedDateTime, Subtract, subtract)
@@ -722,10 +649,8 @@ TEMPORAL_PROTOTYPE_METHOD1(Calendar, InLeapYear, inLeapYear)
 TEMPORAL_PROTOTYPE_METHOD2(Calendar, MergeFields, mergeFields)
 TEMPORAL_PROTOTYPE_METHOD1(Calendar, Month, month)
 TEMPORAL_PROTOTYPE_METHOD1(Calendar, MonthCode, monthCode)
-TEMPORAL_PROTOTYPE_METHOD2(Calendar, MonthDayFromFields, monthDayFromFields)
 TEMPORAL_PROTOTYPE_METHOD1(Calendar, MonthsInYear, monthsInYear)
 TEMPORAL_PROTOTYPE_METHOD1(Calendar, Year, year)
-TEMPORAL_PROTOTYPE_METHOD2(Calendar, YearMonthFromFields, yearMonthFromFields)
 TEMPORAL_PROTOTYPE_METHOD1(Calendar, WeekOfYear, weekOfYear)
 // #sec-temporal.calendar.from
 BUILTIN(TemporalCalendarFrom) {

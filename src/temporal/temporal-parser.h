@@ -139,8 +139,6 @@ class V8_EXPORT_PRIVATE TemporalParser {
   DEFINE_PARSE_METHOD(ParsedISO8601Result, TemporalDateString);
   DEFINE_PARSE_METHOD(ParsedISO8601Result, TemporalDateTimeString);
   DEFINE_PARSE_METHOD(ParsedISO8601Result, TemporalTimeString);
-  DEFINE_PARSE_METHOD(ParsedISO8601Result, TemporalYearMonthString);
-  DEFINE_PARSE_METHOD(ParsedISO8601Result, TemporalMonthDayString);
   DEFINE_PARSE_METHOD(ParsedISO8601Result, TemporalInstantString);
   DEFINE_PARSE_METHOD(ParsedISO8601Result, TemporalZonedDateTimeString);
   DEFINE_PARSE_METHOD(ParsedISO8601Result, TimeZoneIdentifier);

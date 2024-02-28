@@ -74,19 +74,15 @@ TEMPORAL_DATE_INLINE_GETTER_SETTER(JSTemporalPlainDate, year_month_day)
 TEMPORAL_DATE_INLINE_GETTER_SETTER(JSTemporalPlainDateTime, year_month_day)
 TEMPORAL_TIME_INLINE_GETTER_SETTER(JSTemporalPlainDateTime, hour_minute_second,
                                    second_parts)
-TEMPORAL_DATE_INLINE_GETTER_SETTER(JSTemporalPlainMonthDay, year_month_day)
 TEMPORAL_TIME_INLINE_GETTER_SETTER(JSTemporalPlainTime, hour_minute_second,
                                    second_parts)
-TEMPORAL_DATE_INLINE_GETTER_SETTER(JSTemporalPlainYearMonth, year_month_day)
 
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalCalendar)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalDuration)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalInstant)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalPlainDate)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalPlainDateTime)
-TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalPlainMonthDay)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalPlainTime)
-TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalPlainYearMonth)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalTimeZone)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalZonedDateTime)
 

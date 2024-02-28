@@ -519,6 +519,8 @@
   V(_, strict_function_transition_symbol)                 \
   V(_, template_literal_function_literal_id_symbol)       \
   V(_, template_literal_slot_id_symbol)                   \
+  V(_, temporal_ctor_id_symbol)                           \
+  V(_, temporal_calendar_prop_symbol)                     \
   V(_, wasm_exception_tag_symbol)                         \
   V(_, wasm_exception_values_symbol)                      \
   V(_, wasm_uncatchable_symbol)                           \

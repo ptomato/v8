@@ -343,8 +343,6 @@ class JSFunction : public TorqueGeneratedJSFunction<
   DECL_PRINTER(JSFunction)
   DECL_VERIFIER(JSFunction)
 
-  static Handle<String> GetName(Handle<JSFunction> function);
-
   // ES6 section 9.2.11 SetFunctionName
   // Because of the way this abstract operation is used in the spec,
   // it should never fail, but in practice it will fail if the generated

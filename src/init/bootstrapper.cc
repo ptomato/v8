@@ -25,6 +25,7 @@
 #include "src/logging/runtime-call-stats-scope.h"
 #include "src/objects/instance-type.h"
 #include "src/objects/js-array.h"
+#include "src/objects/js-temporal-objects.h"
 #include "src/objects/objects.h"
 #include "src/sandbox/testing.h"
 #ifdef ENABLE_VTUNE_TRACEMARK
@@ -1571,6 +1572,56 @@ static void InstallError(Isolate* isolate, Handle<JSObject> global,
 
 namespace {
 
+static void InstallTemporalCalendarGetter(Isolate* i, Handle<JSObject> base,
+                                          TemporalConstructorType ctor_type) {
+  Handle<String> getter_name =
+      i->factory()->NewStringFromStaticChars("get calendar");
+  Handle<JSFunction> getter = SimpleCreateFunction(
+      i, getter_name, Builtin::kTemporalObjectCalendarGetter, 0, true);
+
+  JSObject::AddProperty(i, getter, i->factory()->temporal_ctor_id_symbol(),
+                        handle(Smi::FromEnum(ctor_type), i), NONE);
+
+  Handle<Object> setter = i->factory()->undefined_value();
+
+  JSObject::DefineOwnAccessorIgnoreAttributes(
+      base, i->factory()->calendar_string(), getter, setter, DONT_ENUM);
+}
+
+static void InstallTemporalGetter(Isolate* i, Handle<JSObject> base,
+                                  Handle<Name> prop, Builtin call,
+                                  TemporalConstructorType ctor_type) {
+  Handle<String> getter_name =
+      Name::ToFunctionName(i, prop, i->factory()->get_string())
+          .ToHandleChecked();
+  Handle<JSFunction> getter =
+      SimpleCreateFunction(i, getter_name, call, 0, true);
+
+  JSObject::AddProperty(i, getter, i->factory()->temporal_ctor_id_symbol(),
+                        handle(Smi::FromEnum(ctor_type), i), NONE);
+  JSObject::AddProperty(
+      i, getter, i->factory()->temporal_calendar_prop_symbol(), prop, NONE);
+
+  Handle<Object> setter = i->factory()->undefined_value();
+
+  JSObject::DefineOwnAccessorIgnoreAttributes(base, prop, getter, setter,
+                                              DONT_ENUM)
+      .Check();
+}
+
+static void InstallTemporalValueOf(Isolate* i, Handle<JSObject> base,
+                                   TemporalConstructorType ctor_type) {
+  Handle<JSFunction> fun =
+      SimpleCreateFunction(i, i->factory()->valueOf_string(),
+                           Builtin::kTemporalObjectValueOf, 0, true);
+
+  JSObject::AddProperty(i, fun, i->factory()->temporal_ctor_id_symbol(),
+                        handle(Smi::FromEnum(ctor_type), i), NONE);
+
+  JSObject::AddProperty(i, base, i->factory()->valueOf_string(), fun,
+                        DONT_ENUM);
+}
+
 Handle<JSObject> InitializeTemporal(Isolate* isolate) {
   Handle<NativeContext> native_context = isolate->native_context();
 
@@ -1643,33 +1694,35 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_FUNC(PlainDate, from, From, 1)
     INSTALL_TEMPORAL_FUNC(PlainDate, compare, Compare, 2)
 
+    InstallTemporalCalendarGetter(isolate, prototype, kPlainDate);
+
 #ifdef V8_INTL_SUPPORT
 #define PLAIN_DATE_GETTER_LIST_INTL(V) \
-  V(era, Era)                          \
-  V(eraYear, EraYear)
+  V(era)                               \
+  V(eraYear)
 #else
 #define PLAIN_DATE_GETTER_LIST_INTL(V)
 #endif  // V8_INTL_SUPPORT
 
 #define PLAIN_DATE_GETTER_LIST(V) \
   PLAIN_DATE_GETTER_LIST_INTL(V)  \
-  V(calendar, Calendar)           \
-  V(year, Year)                   \
-  V(month, Month)                 \
-  V(monthCode, MonthCode)         \
-  V(day, Day)                     \
-  V(dayOfWeek, DayOfWeek)         \
-  V(dayOfYear, DayOfYear)         \
-  V(weekOfYear, WeekOfYear)       \
-  V(daysInWeek, DaysInWeek)       \
-  V(daysInMonth, DaysInMonth)     \
-  V(daysInYear, DaysInYear)       \
-  V(monthsInYear, MonthsInYear)   \
-  V(inLeapYear, InLeapYear)
+  V(year)                         \
+  V(month)                        \
+  V(monthCode)                    \
+  V(day)                          \
+  V(dayOfWeek)                    \
+  V(dayOfYear)                    \
+  V(weekOfYear)                   \
+  V(daysInWeek)                   \
+  V(daysInMonth)                  \
+  V(daysInYear)                   \
+  V(monthsInYear)                 \
+  V(inLeapYear)
 
-#define INSTALL_PLAIN_DATE_GETTER_FUNC(p, N)                                \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalPlainDatePrototype##N, true);
+#define INSTALL_PLAIN_DATE_GETTER_FUNC(p)                                     \
+  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
+                        Builtin::kTemporalObjectCalendarDelegateGetter,       \
+                        kPlainDate);
 
     PLAIN_DATE_GETTER_LIST(INSTALL_PLAIN_DATE_GETTER_FUNC)
 #undef PLAIN_DATE_GETTER_LIST
@@ -1692,8 +1745,7 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
   V(toPlainDateTime, ToPlainDateTime, 0)   \
   V(toZonedDateTime, ToZonedDateTime, 1)   \
   V(toString, ToString, 0)                 \
-  V(toJSON, ToJSON, 0)                     \
-  V(valueOf, ValueOf, 0)
+  V(toJSON, ToJSON, 0)
 
 #define INSTALL_PLAIN_DATE_FUNC(p, N, min)      \
   SimpleInstallFunction(isolate, prototype, #p, \
@@ -1701,6 +1753,8 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     PLAIN_DATE_FUNC_LIST(INSTALL_PLAIN_DATE_FUNC)
 #undef PLAIN_DATE_FUNC_LIST
 #undef INSTALL_PLAIN_DATE_FUNC
+
+    InstallTemporalValueOf(isolate, prototype, kPlainDate);
   }
   {  // -- P l a i n T i m e
      // #sec-temporal-plaintime-objects
@@ -1709,18 +1763,19 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_FUNC(PlainTime, from, From, 1)
     INSTALL_TEMPORAL_FUNC(PlainTime, compare, Compare, 2)
 
-#define PLAIN_TIME_GETTER_LIST(V) \
-  V(calendar, Calendar)           \
-  V(hour, Hour)                   \
-  V(minute, Minute)               \
-  V(second, Second)               \
-  V(millisecond, Millisecond)     \
-  V(microsecond, Microsecond)     \
-  V(nanosecond, Nanosecond)
+    InstallTemporalCalendarGetter(isolate, prototype, kPlainTime);
 
-#define INSTALL_PLAIN_TIME_GETTER_FUNC(p, N)                                \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalPlainTimePrototype##N, true);
+#define PLAIN_TIME_GETTER_LIST(V) \
+  V(hour)                         \
+  V(minute)                       \
+  V(second)                       \
+  V(millisecond)                  \
+  V(microsecond)                  \
+  V(nanosecond)
+
+#define INSTALL_PLAIN_TIME_GETTER_FUNC(p)                                     \
+  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
+                        Builtin::kTemporalObjectTimeUnitGetter, kPlainTime);
 
     PLAIN_TIME_GETTER_LIST(INSTALL_PLAIN_TIME_GETTER_FUNC)
 #undef PLAIN_TIME_GETTER_LIST
@@ -1739,8 +1794,7 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
   V(getISOFields, GetISOFields, 0)       \
   V(toLocaleString, ToLocaleString, 0)   \
   V(toString, ToString, 0)               \
-  V(toJSON, ToJSON, 0)                   \
-  V(valueOf, ValueOf, 0)
+  V(toJSON, ToJSON, 0)
 
 #define INSTALL_PLAIN_TIME_FUNC(p, N, min)      \
   SimpleInstallFunction(isolate, prototype, #p, \
@@ -1748,6 +1802,8 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     PLAIN_TIME_FUNC_LIST(INSTALL_PLAIN_TIME_FUNC)
 #undef PLAIN_TIME_FUNC_LIST
 #undef INSTALL_PLAIN_TIME_FUNC
+
+    InstallTemporalValueOf(isolate, prototype, kPlainTime);
   }
   {  // -- P l a i n D a t e T i m e
     // #sec-temporal-plaindatetime-objects
@@ -1756,39 +1812,52 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_FUNC(PlainDateTime, from, From, 1)
     INSTALL_TEMPORAL_FUNC(PlainDateTime, compare, Compare, 2)
 
+    InstallTemporalCalendarGetter(isolate, prototype, kPlainDateTime);
+
+#define PLAIN_DATE_TIME_GETTER_LIST(V) \
+  V(hour)                              \
+  V(minute)                            \
+  V(second)                            \
+  V(millisecond)                       \
+  V(microsecond)                       \
+  V(nanosecond)
+
+#define INSTALL_PLAIN_DATE_TIME_GETTER_FUNC(p)                                \
+  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
+                        Builtin::kTemporalObjectTimeUnitGetter,               \
+                        kPlainDateTime);
+
+    PLAIN_DATE_TIME_GETTER_LIST(INSTALL_PLAIN_DATE_TIME_GETTER_FUNC)
+#undef PLAIN_DATE_TIME_GETTER_LIST
+#undef INSTALL_PLAIN_DATE_TIME_GETTER_FUNC
+
 #ifdef V8_INTL_SUPPORT
 #define PLAIN_DATE_TIME_GETTER_LIST_INTL(V) \
-  V(era, Era)                               \
-  V(eraYear, EraYear)
+  V(era)                                    \
+  V(eraYear)
 #else
 #define PLAIN_DATE_TIME_GETTER_LIST_INTL(V)
 #endif  // V8_INTL_SUPPORT
 
 #define PLAIN_DATE_TIME_GETTER_LIST(V) \
   PLAIN_DATE_TIME_GETTER_LIST_INTL(V)  \
-  V(calendar, Calendar)                \
-  V(year, Year)                        \
-  V(month, Month)                      \
-  V(monthCode, MonthCode)              \
-  V(day, Day)                          \
-  V(hour, Hour)                        \
-  V(minute, Minute)                    \
-  V(second, Second)                    \
-  V(millisecond, Millisecond)          \
-  V(microsecond, Microsecond)          \
-  V(nanosecond, Nanosecond)            \
-  V(dayOfWeek, DayOfWeek)              \
-  V(dayOfYear, DayOfYear)              \
-  V(weekOfYear, WeekOfYear)            \
-  V(daysInWeek, DaysInWeek)            \
-  V(daysInMonth, DaysInMonth)          \
-  V(daysInYear, DaysInYear)            \
-  V(monthsInYear, MonthsInYear)        \
-  V(inLeapYear, InLeapYear)
+  V(year)                              \
+  V(month)                             \
+  V(monthCode)                         \
+  V(day)                               \
+  V(dayOfWeek)                         \
+  V(dayOfYear)                         \
+  V(weekOfYear)                        \
+  V(daysInWeek)                        \
+  V(daysInMonth)                       \
+  V(daysInYear)                        \
+  V(monthsInYear)                      \
+  V(inLeapYear)
 
-#define INSTALL_PLAIN_DATE_TIME_GETTER_FUNC(p, N)                           \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalPlainDateTimePrototype##N, true);
+#define INSTALL_PLAIN_DATE_TIME_GETTER_FUNC(p)                                \
+  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
+                        Builtin::kTemporalObjectCalendarDelegateGetter,       \
+                        kPlainDateTime);
 
     PLAIN_DATE_TIME_GETTER_LIST(INSTALL_PLAIN_DATE_TIME_GETTER_FUNC)
 #undef PLAIN_DATE_TIME_GETTER_LIST
@@ -1809,7 +1878,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
   V(toLocaleString, ToLocaleString, 0)     \
   V(toJSON, ToJSON, 0)                     \
   V(toString, ToString, 0)                 \
-  V(valueOf, ValueOf, 0)                   \
   V(toZonedDateTime, ToZonedDateTime, 1)   \
   V(toPlainDate, ToPlainDate, 0)           \
   V(toPlainYearMonth, ToPlainYearMonth, 0) \
@@ -1824,6 +1892,8 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     PLAIN_DATE_TIME_FUNC_LIST(INSTALL_PLAIN_DATE_TIME_FUNC)
 #undef PLAIN_DATE_TIME_FUNC_LIST
 #undef INSTALL_PLAIN_DATE_TIME_FUNC
+
+    InstallTemporalValueOf(isolate, prototype, kPlainDateTime);
   }
   {  // -- Z o n e d D a t e T i m e
     // #sec-temporal-zoneddatetime-objects
@@ -1832,41 +1902,10 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_FUNC(ZonedDateTime, from, From, 1)
     INSTALL_TEMPORAL_FUNC(ZonedDateTime, compare, Compare, 2)
 
-#ifdef V8_INTL_SUPPORT
-#define ZONED_DATE_TIME_GETTER_LIST_INTL(V) \
-  V(era, Era)                               \
-  V(eraYear, EraYear)
-#else
-#define ZONED_DATE_TIME_GETTER_LIST_INTL(V)
-#endif  // V8_INTL_SUPPORT
+    InstallTemporalCalendarGetter(isolate, prototype, kZonedDateTime);
 
 #define ZONED_DATE_TIME_GETTER_LIST(V)    \
-  ZONED_DATE_TIME_GETTER_LIST_INTL(V)     \
-  V(calendar, Calendar)                   \
   V(timeZone, TimeZone)                   \
-  V(year, Year)                           \
-  V(month, Month)                         \
-  V(monthCode, MonthCode)                 \
-  V(day, Day)                             \
-  V(hour, Hour)                           \
-  V(minute, Minute)                       \
-  V(second, Second)                       \
-  V(millisecond, Millisecond)             \
-  V(microsecond, Microsecond)             \
-  V(nanosecond, Nanosecond)               \
-  V(epochSeconds, EpochSeconds)           \
-  V(epochMilliseconds, EpochMilliseconds) \
-  V(epochMicroseconds, EpochMicroseconds) \
-  V(epochNanoseconds, EpochNanoseconds)   \
-  V(dayOfWeek, DayOfWeek)                 \
-  V(dayOfYear, DayOfYear)                 \
-  V(weekOfYear, WeekOfYear)               \
-  V(hoursInDay, HoursInDay)               \
-  V(daysInWeek, DaysInWeek)               \
-  V(daysInMonth, DaysInMonth)             \
-  V(daysInYear, DaysInYear)               \
-  V(monthsInYear, MonthsInYear)           \
-  V(inLeapYear, InLeapYear)               \
   V(offsetNanoseconds, OffsetNanoseconds) \
   V(offset, Offset)
 
@@ -1876,7 +1915,72 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
 
     ZONED_DATE_TIME_GETTER_LIST(INSTALL_ZONED_DATE_TIME_GETTER_FUNC)
 #undef ZONED_DATE_TIME_GETTER_LIST
+#undef INSTALL_ZONED_DATE_TIME_GETTER_FUNC
+
+#ifdef V8_INTL_SUPPORT
+#define ZONED_DATE_TIME_GETTER_LIST_INTL(V) \
+  V(era)                                    \
+  V(eraYear)
+#else
+#define ZONED_DATE_TIME_GETTER_LIST_INTL(V)
+#endif  // V8_INTL_SUPPORT
+
+#define ZONED_DATE_TIME_GETTER_LIST(V) \
+  ZONED_DATE_TIME_GETTER_LIST_INTL(V)  \
+  V(year)                              \
+  V(month)                             \
+  V(monthCode)                         \
+  V(day)                               \
+  V(dayOfWeek)                         \
+  V(dayOfYear)                         \
+  V(weekOfYear)                        \
+  V(hoursInDay)                        \
+  V(daysInWeek)                        \
+  V(daysInMonth)                       \
+  V(daysInYear)                        \
+  V(monthsInYear)                      \
+  V(inLeapYear)
+
+#define INSTALL_ZONED_DATE_TIME_GETTER_FUNC(p)                                \
+  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
+                        Builtin::kTemporalObjectCalendarDelegateGetter,       \
+                        kZonedDateTime);
+
+    ZONED_DATE_TIME_GETTER_LIST(INSTALL_ZONED_DATE_TIME_GETTER_FUNC)
+#undef ZONED_DATE_TIME_GETTER_LIST
 #undef ZONED_DATE_TIME_GETTER_LIST_INTL
+#undef INSTALL_ZONED_DATE_TIME_GETTER_FUNC
+
+#define ZONED_DATE_TIME_GETTER_LIST(V) \
+  V(hour)                              \
+  V(minute)                            \
+  V(second)                            \
+  V(millisecond)                       \
+  V(microsecond)                       \
+  V(nanosecond)
+
+#define INSTALL_ZONED_DATE_TIME_GETTER_FUNC(p)                                \
+  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
+                        Builtin::kTemporalObjectTimeUnitGetter,               \
+                        kZonedDateTime);
+
+    ZONED_DATE_TIME_GETTER_LIST(INSTALL_ZONED_DATE_TIME_GETTER_FUNC)
+#undef ZONED_DATE_TIME_GETTER_LIST
+#undef INSTALL_ZONED_DATE_TIME_GETTER_FUNC
+
+#define ZONED_DATE_TIME_GETTER_LIST(V) \
+  V(epochSeconds)                      \
+  V(epochMilliseconds)                 \
+  V(epochMicroseconds)                 \
+  V(epochNanoseconds)
+
+#define INSTALL_ZONED_DATE_TIME_GETTER_FUNC(p)                                \
+  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
+                        Builtin::kTemporalObjectExactTimeGetter,              \
+                        kZonedDateTime);
+
+    ZONED_DATE_TIME_GETTER_LIST(INSTALL_ZONED_DATE_TIME_GETTER_FUNC)
+#undef ZONED_DATE_TIME_GETTER_LIST
 #undef INSTALL_ZONED_DATE_TIME_GETTER_FUNC
 
 #define ZONED_DATE_TIME_FUNC_LIST(V)       \
@@ -1894,7 +1998,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
   V(toLocaleString, ToLocaleString, 0)     \
   V(toString, ToString, 0)                 \
   V(toJSON, ToJSON, 0)                     \
-  V(valueOf, ValueOf, 0)                   \
   V(startOfDay, StartOfDay, 0)             \
   V(toInstant, ToInstant, 0)               \
   V(toPlainDate, ToPlainDate, 0)           \
@@ -1911,6 +2014,8 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     ZONED_DATE_TIME_FUNC_LIST(INSTALL_ZONED_DATE_TIME_FUNC)
 #undef ZONED_DATE_TIME_FUNC_LIST
 #undef INSTALL_ZONED_DATE_TIME_FUNC
+
+    InstallTemporalValueOf(isolate, prototype, kZonedDateTime);
   }
   {  // -- D u r a t i o n
     // #sec-temporal-duration-objects
@@ -1951,8 +2056,7 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
   V(total, Total, 1)                   \
   V(toLocaleString, ToLocaleString, 0) \
   V(toString, ToString, 0)             \
-  V(toJSON, ToJSON, 0)                 \
-  V(valueOf, ValueOf, 0)
+  V(toJSON, ToJSON, 0)
 
 #define INSTALL_DURATION_FUNC(p, N, min)        \
   SimpleInstallFunction(isolate, prototype, #p, \
@@ -1960,6 +2064,8 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     DURATION_FUNC_LIST(INSTALL_DURATION_FUNC)
 #undef DURATION_FUNC_LIST
 #undef INSTALL_DURATION_FUNC
+
+    InstallTemporalValueOf(isolate, prototype, kDuration);
   }
   {  // -- I n s t a n t
     // #sec-temporal-instant-objects
@@ -1975,15 +2081,15 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_FUNC(Instant, fromEpochNanoseconds, FromEpochNanoseconds,
                           1)
 
-#define INSTANT_GETTER_LIST(V)            \
-  V(epochSeconds, EpochSeconds)           \
-  V(epochMilliseconds, EpochMilliseconds) \
-  V(epochMicroseconds, EpochMicroseconds) \
-  V(epochNanoseconds, EpochNanoseconds)
+#define INSTANT_GETTER_LIST(V) \
+  V(epochSeconds)              \
+  V(epochMilliseconds)         \
+  V(epochMicroseconds)         \
+  V(epochNanoseconds)
 
-#define INSTALL_INSTANT_GETTER_FUNC(p, N)                                   \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalInstantPrototype##N, true);
+#define INSTALL_INSTANT_GETTER_FUNC(p)                                        \
+  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
+                        Builtin::kTemporalObjectExactTimeGetter, kInstant);
 
     INSTANT_GETTER_LIST(INSTALL_INSTANT_GETTER_FUNC)
 #undef INSTANT_GETTER_LIST
@@ -1999,7 +2105,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
   V(toLocaleString, ToLocaleString, 0)   \
   V(toString, ToString, 0)               \
   V(toJSON, ToJSON, 0)                   \
-  V(valueOf, ValueOf, 0)                 \
   V(toZonedDateTime, ToZonedDateTime, 1) \
   V(toZonedDateTimeISO, ToZonedDateTimeISO, 1)
 
@@ -2017,28 +2122,30 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_FUNC(PlainYearMonth, from, From, 1)
     INSTALL_TEMPORAL_FUNC(PlainYearMonth, compare, Compare, 2)
 
+    InstallTemporalCalendarGetter(isolate, prototype, kPlainYearMonth);
+
 #ifdef V8_INTL_SUPPORT
 #define PLAIN_YEAR_MONTH_GETTER_LIST_INTL(V) \
-  V(era, Era)                                \
-  V(eraYear, EraYear)
+  V(era)                                     \
+  V(eraYear)
 #else
 #define PLAIN_YEAR_MONTH_GETTER_LIST_INTL(V)
 #endif  // V8_INTL_SUPPORT
 
 #define PLAIN_YEAR_MONTH_GETTER_LIST(V) \
   PLAIN_YEAR_MONTH_GETTER_LIST_INTL(V)  \
-  V(calendar, Calendar)                 \
-  V(year, Year)                         \
-  V(month, Month)                       \
-  V(monthCode, MonthCode)               \
-  V(daysInYear, DaysInYear)             \
-  V(daysInMonth, DaysInMonth)           \
-  V(monthsInYear, MonthsInYear)         \
-  V(inLeapYear, InLeapYear)
+  V(year)                               \
+  V(month)                              \
+  V(monthCode)                          \
+  V(daysInYear)                         \
+  V(daysInMonth)                        \
+  V(monthsInYear)                       \
+  V(inLeapYear)
 
-#define INSTALL_PLAIN_YEAR_MONTH_GETTER_FUNC(p, N)                          \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalPlainYearMonthPrototype##N, true);
+#define INSTALL_PLAIN_YEAR_MONTH_GETTER_FUNC(p)                               \
+  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
+                        Builtin::kTemporalObjectCalendarDelegateGetter,       \
+                        kPlainYearMonth);
 
     PLAIN_YEAR_MONTH_GETTER_LIST(INSTALL_PLAIN_YEAR_MONTH_GETTER_FUNC)
 #undef PLAIN_YEAR_MONTH_GETTER_LIST
@@ -2055,7 +2162,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
   V(toLocaleString, ToLocaleString, 0) \
   V(toString, ToString, 0)             \
   V(toJSON, ToJSON, 0)                 \
-  V(valueOf, ValueOf, 0)               \
   V(toPlainDate, ToPlainDate, 1)       \
   V(getISOFields, GetISOFields, 0)
 
@@ -2074,14 +2180,16 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_FUNC(PlainMonthDay, from, From, 1)
     // Notice there are no Temporal.PlainMonthDay.compare in the spec.
 
-#define PLAIN_MONTH_DAY_GETTER_LIST(V) \
-  V(calendar, Calendar)                \
-  V(monthCode, MonthCode)              \
-  V(day, Day)
+    InstallTemporalCalendarGetter(isolate, prototype, kPlainMonthDay);
 
-#define INSTALL_PLAIN_MONTH_DAY_GETTER_FUNC(p, N)                           \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalPlainMonthDayPrototype##N, true);
+#define PLAIN_MONTH_DAY_GETTER_LIST(V) \
+  V(monthCode)                         \
+  V(day)
+
+#define INSTALL_PLAIN_MONTH_DAY_GETTER_FUNC(p)                                \
+  InstallTemporalGetter(isolate, prototype, isolate->factory()->p##_string(), \
+                        Builtin::kTemporalObjectCalendarDelegateGetter,       \
+                        kPlainMonthDay);
 
     PLAIN_MONTH_DAY_GETTER_LIST(INSTALL_PLAIN_MONTH_DAY_GETTER_FUNC)
 #undef PLAIN_MONTH_DAY_GETTER_LIST
@@ -2093,7 +2201,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
   V(toLocaleString, ToLocaleString, 0) \
   V(toString, ToString, 0)             \
   V(toJSON, ToJSON, 0)                 \
-  V(valueOf, ValueOf, 0)               \
   V(toPlainDate, ToPlainDate, 1)       \
   V(getISOFields, GetISOFields, 0)
 

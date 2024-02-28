@@ -15,6 +15,18 @@
 namespace v8 {
 namespace internal {
 
+enum TemporalConstructorType {
+  kDuration,
+  kInstant,
+  kPlainDate,
+  kPlainDateTime,
+  kPlainMonthDay,
+  kPlainTime,
+  kPlainYearMonth,
+  kZonedDateTime,
+  kNumTemporalConstructors,
+};
+
 #include "torque-generated/src/objects/js-temporal-objects-tq.inc"
 
 #define DECLARE_TEMPORAL_INLINE_GETTER_SETTER(field) \

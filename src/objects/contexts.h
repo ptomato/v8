@@ -212,12 +212,8 @@ enum ContextLookupFlags {
     temporal_plain_date_function)                                              \
   V(JS_TEMPORAL_PLAIN_DATE_TIME_FUNCTION_INDEX, JSFunction,                    \
     temporal_plain_date_time_function)                                         \
-  V(JS_TEMPORAL_PLAIN_MONTH_DAY_FUNCTION_INDEX, JSFunction,                    \
-    temporal_plain_month_day_function)                                         \
   V(JS_TEMPORAL_PLAIN_TIME_FUNCTION_INDEX, JSFunction,                         \
     temporal_plain_time_function)                                              \
-  V(JS_TEMPORAL_PLAIN_YEAR_MONTH_FUNCTION_INDEX, JSFunction,                   \
-    temporal_plain_year_month_function)                                        \
   V(JS_TEMPORAL_TIME_ZONE_FUNCTION_INDEX, JSFunction,                          \
     temporal_time_zone_function)                                               \
   V(JS_TEMPORAL_ZONED_DATE_TIME_FUNCTION_INDEX, JSFunction,                    \

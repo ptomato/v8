@@ -22,9 +22,7 @@ enum TemporalConstructorType {
   kNow,
   kPlainDate,
   kPlainDateTime,
-  kPlainMonthDay,
   kPlainTime,
-  kPlainYearMonth,
   kTimeZone,
   kZonedDateTime,
   kNumTemporalConstructors,
@@ -56,8 +54,6 @@ enum TemporalConstructorType {
   }
 
 class JSTemporalPlainDate;
-class JSTemporalPlainMonthDay;
-class JSTemporalPlainYearMonth;
 
 class JSTemporalCalendar
     : public TorqueGeneratedJSTemporalCalendar<JSTemporalCalendar, JSObject> {
@@ -121,16 +117,6 @@ class JSTemporalCalendar
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainDate> DateFromFields(
       Isolate* isolate, Handle<JSTemporalCalendar> calendar,
       Handle<Object> fields, Handle<Object> options);
-
-  // #sec-temporal.calendar.prototype.monthdayfromfields
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainMonthDay>
-  MonthDayFromFields(Isolate* isolate, Handle<JSTemporalCalendar> calendar,
-                     Handle<Object> fields, Handle<Object> options);
-
-  // #sec-temporal.calendar.prototype.yearmonthfromfields
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainYearMonth>
-  YearMonthFromFields(Isolate* isolate, Handle<JSTemporalCalendar> calendar,
-                      Handle<Object> fields, Handle<Object> options);
 
   // #sec-temporal.calendar.prototype.mergefields
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSReceiver> MergeFields(
@@ -422,14 +408,6 @@ class JSTemporalPlainDate
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSReceiver> GetISOFields(
       Isolate* isolate, Handle<JSTemporalPlainDate> plain_date);
 
-  // #sec-temporal.plaindate.prototype.toplainyearmonth
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainYearMonth>
-  ToPlainYearMonth(Isolate* isolate, Handle<JSTemporalPlainDate> plain_date);
-
-  // #sec-temporal.plaindate.prototype.toplainmonthday
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainMonthDay>
-  ToPlainMonthDay(Isolate* isolate, Handle<JSTemporalPlainDate> plain_date);
-
   // #sec-temporal.plaindate.prototype.tozoneddatetime
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalZonedDateTime>
   ToZonedDateTime(Isolate* isolate, Handle<JSTemporalPlainDate> plain_date,
@@ -503,14 +481,6 @@ class JSTemporalPlainDateTime
   V8_WARN_UNUSED_RESULT static MaybeHandle<Oddball> Equals(
       Isolate* isolate, Handle<JSTemporalPlainDateTime> plain_date,
       Handle<Object> other);
-
-  // #sec-temporal.plaindatetime.prototype.toplainyearmonth
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainYearMonth>
-  ToPlainYearMonth(Isolate* isolate, Handle<JSTemporalPlainDateTime> date_time);
-
-  // #sec-temporal.plaindatetime.prototype.toplainmonthday
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainMonthDay>
-  ToPlainMonthDay(Isolate* isolate, Handle<JSTemporalPlainDateTime> date_time);
 
   // #sec-temporal.plaintime.prototype.tozoneddatetime
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalZonedDateTime>
@@ -598,63 +568,6 @@ class JSTemporalPlainDateTime
   DECLARE_TEMPORAL_TIME_INLINE_GETTER_SETTER()
 
   TQ_OBJECT_CONSTRUCTORS(JSTemporalPlainDateTime)
-};
-
-class JSTemporalPlainMonthDay
-    : public TorqueGeneratedJSTemporalPlainMonthDay<JSTemporalPlainMonthDay,
-                                                    JSObject> {
- public:
-  // ##sec-temporal.plainmonthday
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainMonthDay> Constructor(
-      Isolate* isolate, Handle<JSFunction> target,
-      Handle<HeapObject> new_target, Handle<Object> iso_month,
-      Handle<Object> iso_day, Handle<Object> calendar_like,
-      Handle<Object> reference_iso_year);
-
-  // #sec-temporal.plainmonthday.from
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainMonthDay> From(
-      Isolate* isolate, Handle<Object> item, Handle<Object> options);
-
-  // #sec-temporal.plainmonthday.prototype.equals
-  V8_WARN_UNUSED_RESULT static MaybeHandle<Oddball> Equals(
-      Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day,
-      Handle<Object> other);
-
-  // #sec-temporal.plainmonthday.prototype.with
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainMonthDay> With(
-      Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day,
-      Handle<Object> temporal_month_day_like, Handle<Object> options);
-
-  // #sec-temporal.plainmonthday.prototype.toplaindate
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainDate> ToPlainDate(
-      Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day,
-      Handle<Object> item);
-
-  // #sec-temporal.plainmonthday.prototype.getisofields
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSReceiver> GetISOFields(
-      Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day);
-
-  // #sec-temporal.plainmonthday.prototype.tostring
-  V8_WARN_UNUSED_RESULT static MaybeHandle<String> ToString(
-      Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day,
-      Handle<Object> options);
-
-  // #sec-temporal.plainmonthday.prototype.tojson
-  V8_WARN_UNUSED_RESULT static MaybeHandle<String> ToJSON(
-      Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day);
-
-  // #sec-temporal.plainmonthday.prototype.tolocalestring
-  V8_WARN_UNUSED_RESULT static MaybeHandle<String> ToLocaleString(
-      Isolate* isolate, Handle<JSTemporalPlainMonthDay> plain_date,
-      Handle<Object> locales, Handle<Object> options);
-
-  DECL_PRINTER(JSTemporalPlainMonthDay)
-
-  DEFINE_TORQUE_GENERATED_JS_TEMPORAL_YEAR_MONTH_DAY()
-
-  DECLARE_TEMPORAL_DATE_INLINE_GETTER_SETTER()
-
-  TQ_OBJECT_CONSTRUCTORS(JSTemporalPlainMonthDay)
 };
 
 class JSTemporalPlainTime
@@ -751,90 +664,6 @@ class JSTemporalPlainTime
   DECLARE_TEMPORAL_TIME_INLINE_GETTER_SETTER()
 
   TQ_OBJECT_CONSTRUCTORS(JSTemporalPlainTime)
-};
-
-class JSTemporalPlainYearMonth
-    : public TorqueGeneratedJSTemporalPlainYearMonth<JSTemporalPlainYearMonth,
-                                                     JSObject> {
- public:
-  // ##sec-temporal.plainyearmonth
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainYearMonth>
-  Constructor(Isolate* isolate, Handle<JSFunction> target,
-              Handle<HeapObject> new_target, Handle<Object> iso_year,
-              Handle<Object> iso_month, Handle<Object> calendar_like,
-              Handle<Object> reference_iso_day);
-
-  // #sec-temporal.plainyearmonth.from
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainYearMonth> From(
-      Isolate* isolate, Handle<Object> item, Handle<Object> options);
-
-  // #sec-temporal.plainyearmonth.compare
-  V8_WARN_UNUSED_RESULT static MaybeHandle<Smi> Compare(Isolate* isolate,
-                                                        Handle<Object> one,
-                                                        Handle<Object> two);
-
-  // #sec-temporal.plainyearmonth.prototype.equals
-  V8_WARN_UNUSED_RESULT static MaybeHandle<Oddball> Equals(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-      Handle<Object> other);
-
-  // #sec-temporal.plainyearmonth.prototype.with
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainYearMonth> With(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-      Handle<Object> temporal_year_month_like, Handle<Object> options);
-
-  // #sec-temporal.plainyearmonth.prototype.toplaindate
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainDate> ToPlainDate(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-      Handle<Object> item);
-
-  // #sec-temporal.plainyearmonth.prototype.getisofields
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSReceiver> GetISOFields(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month);
-
-  // #sec-temporal.plainyearmonth.prototype.add
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainYearMonth> Add(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-      Handle<Object> temporal_duration_like, Handle<Object> options);
-
-  // #sec-temporal.plainyearmonth.prototype.subtract
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainYearMonth> Subtract(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-      Handle<Object> temporal_duration_like, Handle<Object> options);
-
-  // #sec-temporal.plainyearmonth.prototype.until
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalDuration> Until(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-      Handle<Object> other, Handle<Object> options);
-
-  // #sec-temporal.plaindyearmonth.prototype.since
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalDuration> Since(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-      Handle<Object> other, Handle<Object> options);
-
-  // #sec-temporal.plainyearmonth.prototype.tostring
-  V8_WARN_UNUSED_RESULT static MaybeHandle<String> ToString(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-      Handle<Object> options);
-
-  // #sec-temporal.plainyearmonth.prototype.tojson
-  V8_WARN_UNUSED_RESULT static MaybeHandle<String> ToJSON(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month);
-
-  // #sec-temporal.plainyearmonth.prototype.tolocalestring
-  V8_WARN_UNUSED_RESULT static MaybeHandle<String> ToLocaleString(
-      Isolate* isolate, Handle<JSTemporalPlainYearMonth> plain_date,
-      Handle<Object> locales, Handle<Object> options);
-
-  // Abstract Operations
-
-  DECL_PRINTER(JSTemporalPlainYearMonth)
-
-  DEFINE_TORQUE_GENERATED_JS_TEMPORAL_YEAR_MONTH_DAY()
-
-  DECLARE_TEMPORAL_DATE_INLINE_GETTER_SETTER()
-
-  TQ_OBJECT_CONSTRUCTORS(JSTemporalPlainYearMonth)
 };
 
 class JSTemporalTimeZone
@@ -996,16 +825,6 @@ class JSTemporalZonedDateTime
   // #sec-temporal.zoneddatetime.prototype.getisofields
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSReceiver> GetISOFields(
       Isolate* isolate, Handle<JSTemporalZonedDateTime> zoned_date_time);
-
-  // #sec-temporal.zoneddatetime.prototype.toplainyearmonth
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainYearMonth>
-  ToPlainYearMonth(Isolate* isolate,
-                   Handle<JSTemporalZonedDateTime> zoned_date_time);
-
-  // #sec-temporal.zoneddatetime.prototype.toplainmonthday
-  V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalPlainMonthDay>
-  ToPlainMonthDay(Isolate* isolate,
-                  Handle<JSTemporalZonedDateTime> zoned_date_time);
 
   // #sec-temporal.now.zoneddatetime
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalZonedDateTime> Now(

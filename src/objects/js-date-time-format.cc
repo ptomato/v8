@@ -806,14 +806,11 @@ bool IsTemporalObject(Handle<Object> value) {
   }
   // 2. If value does not have an [[InitializedTemporalDate]],
   // [[InitializedTemporalTime]], [[InitializedTemporalDateTime]],
-  // [[InitializedTemporalZonedDateTime]], [[InitializedTemporalYearMonth]],
-  // [[InitializedTemporalMonthDay]], or [[InitializedTemporalInstant]] internal
-  // slot, then
+  // [[InitializedTemporalZonedDateTime]], or [[InitializedTemporalInstant]]
+  // internal slot, then
   if (!IsJSTemporalPlainDate(*value) && !IsJSTemporalPlainTime(*value) &&
       !IsJSTemporalPlainDateTime(*value) &&
-      !IsJSTemporalZonedDateTime(*value) &&
-      !IsJSTemporalPlainYearMonth(*value) &&
-      !IsJSTemporalPlainMonthDay(*value) && !IsJSTemporalInstant(*value)) {
+      !IsJSTemporalZonedDateTime(*value) && !IsJSTemporalInstant(*value)) {
     // a. Return false.
     return false;
   }
@@ -843,16 +840,6 @@ bool SameTemporalType(Handle<Object> x, Handle<Object> y) {
   if (IsJSTemporalZonedDateTime(*x) && !IsJSTemporalZonedDateTime(*y)) {
     return false;
   }
-  // 6. If x has an [[InitializedTemporalYearMonth]] internal slot and y does
-  // not, return false.
-  if (IsJSTemporalPlainYearMonth(*x) && !IsJSTemporalPlainYearMonth(*y)) {
-    return false;
-  }
-  // 7. If x has an [[InitializedTemporalMonthDay]] internal slot and y does
-  // not, return false.
-  if (IsJSTemporalPlainMonthDay(*x) && !IsJSTemporalPlainMonthDay(*y)) {
-    return false;
-  }
   // 8. If x has an [[InitializedTemporalInstant]] internal slot and y does not,
   // return false.
   if (IsJSTemporalInstant(*x) && !IsJSTemporalInstant(*y)) return false;
@@ -865,8 +852,6 @@ enum class PatternKind {
   kPlainDate,
   kPlainDateTime,
   kPlainTime,
-  kPlainYearMonth,
-  kPlainMonthDay,
   kZonedDateTime,
   kInstant,
 };
@@ -1154,28 +1139,6 @@ Maybe<DateTimeValueRecord> HandleDateTimeTemporalYearMonthOrMonthDay(
                              method_name);
 }
 
-// #sec-temporal-handledatetimevaluetemporalyearmonth
-Maybe<DateTimeValueRecord> HandleDateTimeTemporalYearMonth(
-    Isolate* isolate, const icu::SimpleDateFormat& date_time_format,
-    Handle<String> date_time_format_calendar,
-    Handle<JSTemporalPlainYearMonth> temporal_year_month,
-    const char* method_name) {
-  return HandleDateTimeTemporalYearMonthOrMonthDay<JSTemporalPlainYearMonth>(
-      isolate, date_time_format, date_time_format_calendar,
-      PatternKind::kPlainYearMonth, temporal_year_month, method_name);
-}
-
-// #sec-temporal-handledatetimevaluetemporalmonthday
-Maybe<DateTimeValueRecord> HandleDateTimeTemporalMonthDay(
-    Isolate* isolate, const icu::SimpleDateFormat& date_time_format,
-    Handle<String> date_time_format_calendar,
-    Handle<JSTemporalPlainMonthDay> temporal_month_day,
-    const char* method_name) {
-  return HandleDateTimeTemporalYearMonthOrMonthDay<JSTemporalPlainMonthDay>(
-      isolate, date_time_format, date_time_format_calendar,
-      PatternKind::kPlainMonthDay, temporal_month_day, method_name);
-}
-
 // #sec-temporal-handledatetimeothers
 Maybe<DateTimeValueRecord> HandleDateTimeOthers(
     Isolate* isolate, const icu::SimpleDateFormat& date_time_format,
@@ -1227,20 +1190,6 @@ Maybe<DateTimeValueRecord> HandleDateTimeValue(
       return HandleDateTimeTemporalDate(
           isolate, date_time_format, date_time_format_calendar,
           Handle<JSTemporalPlainDate>::cast(x), method_name);
-    }
-    // b. If x has an [[InitializedTemporalYearMonth]] internal slot, then
-    if (IsJSTemporalPlainYearMonth(*x)) {
-      // i. Return ? HandleDateTimeTemporalYearMonth(dateTimeFormat, x).
-      return HandleDateTimeTemporalYearMonth(
-          isolate, date_time_format, date_time_format_calendar,
-          Handle<JSTemporalPlainYearMonth>::cast(x), method_name);
-    }
-    // c. If x has an [[InitializedTemporalMonthDay]] internal slot, then
-    if (IsJSTemporalPlainMonthDay(*x)) {
-      // i. Return ? HandleDateTimeTemporalMonthDay(dateTimeFormat, x).
-      return HandleDateTimeTemporalMonthDay(
-          isolate, date_time_format, date_time_format_calendar,
-          Handle<JSTemporalPlainMonthDay>::cast(x), method_name);
     }
     // d. If x has an [[InitializedTemporalTime]] internal slot, then
     if (IsJSTemporalPlainTime(*x)) {
@@ -1338,18 +1287,6 @@ icu::UnicodeString GetSkeletonForPatternKind(const icu::UnicodeString& input,
           input, {'E', 'c', 'G', 'y', 'M', 'L', 'd'},
           // Default fields: [[year]], [[month]], [[day]]
           {'y', 'M', 'd'});
-    case PatternKind::kPlainYearMonth:
-      return KeepSupportedAddDefault(
-          // Supported fields: [[era]], [[year]], [[month]]
-          input, {'G', 'y', 'M', 'L'},
-          // Default fields: [[year]], [[month]]
-          {'y', 'M'});
-    case PatternKind::kPlainMonthDay:
-      return KeepSupportedAddDefault(
-          // Supported fields: [[month]] [[day]]
-          input, {'M', 'L', 'd'},
-          // Default fields: [[month]] [[day]]
-          {'M', 'd'});
 
     case PatternKind::kPlainTime:
       return KeepSupportedAddDefault(

@@ -1723,8 +1723,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_GETTER(PlainDate, eraYear)
 #endif  // V8_INTL_SUPPORT
 
-    INSTALL_TEMPORAL_METHOD(PlainDate, toPlainYearMonth, 0)
-    INSTALL_TEMPORAL_METHOD(PlainDate, toPlainMonthDay, 0)
     INSTALL_TEMPORAL_METHOD(PlainDate, getISOFields, 0)
     INSTALL_TEMPORAL_METHOD(PlainDate, add, 1)
     INSTALL_TEMPORAL_METHOD(PlainDate, subtract, 1)
@@ -1817,8 +1815,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_METHOD(PlainDateTime, valueOf, 0)
     INSTALL_TEMPORAL_METHOD(PlainDateTime, toZonedDateTime, 1)
     INSTALL_TEMPORAL_METHOD(PlainDateTime, toPlainDate, 0)
-    INSTALL_TEMPORAL_METHOD(PlainDateTime, toPlainYearMonth, 0)
-    INSTALL_TEMPORAL_METHOD(PlainDateTime, toPlainMonthDay, 0)
     INSTALL_TEMPORAL_METHOD(PlainDateTime, toPlainTime, 0)
     INSTALL_TEMPORAL_METHOD(PlainDateTime, getISOFields, 0)
   }
@@ -1881,8 +1877,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_METHOD(ZonedDateTime, toPlainDate, 0)
     INSTALL_TEMPORAL_METHOD(ZonedDateTime, toPlainTime, 0)
     INSTALL_TEMPORAL_METHOD(ZonedDateTime, toPlainDateTime, 0)
-    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toPlainYearMonth, 0)
-    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toPlainMonthDay, 0)
     INSTALL_TEMPORAL_METHOD(ZonedDateTime, getISOFields, 0)
   }
   {  // -- D u r a t i o n
@@ -1946,59 +1940,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_METHOD(Instant, toZonedDateTime, 1)
     INSTALL_TEMPORAL_METHOD(Instant, toZonedDateTimeISO, 1)
   }
-  {  // -- P l a i n Y e a r M o n t h
-    // #sec-temporal-plainyearmonth-objects
-    // #sec-temporal.plainyearmonth
-    INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(PlainYearMonth, PLAIN_YEAR_MONTH, 2)
-    INSTALL_TEMPORAL_FUNC(PlainYearMonth, from, 1)
-    INSTALL_TEMPORAL_FUNC(PlainYearMonth, compare, 2)
-
-    INSTALL_TEMPORAL_GETTER(PlainYearMonth, calendar)
-    INSTALL_TEMPORAL_GETTER(PlainYearMonth, year)
-    INSTALL_TEMPORAL_GETTER(PlainYearMonth, month)
-    INSTALL_TEMPORAL_GETTER(PlainYearMonth, monthCode)
-    INSTALL_TEMPORAL_GETTER(PlainYearMonth, daysInYear)
-    INSTALL_TEMPORAL_GETTER(PlainYearMonth, daysInMonth)
-    INSTALL_TEMPORAL_GETTER(PlainYearMonth, monthsInYear)
-    INSTALL_TEMPORAL_GETTER(PlainYearMonth, inLeapYear)
-#ifdef V8_INTL_SUPPORT
-    INSTALL_TEMPORAL_GETTER(PlainYearMonth, era)
-    INSTALL_TEMPORAL_GETTER(PlainYearMonth, eraYear)
-#endif  // V8_INTL_SUPPORT
-
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, with, 1)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, add, 1)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, subtract, 1)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, until, 1)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, since, 1)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, equals, 1)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, toLocaleString, 0)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, toString, 0)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, toJSON, 0)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, valueOf, 0)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, toPlainDate, 1)
-    INSTALL_TEMPORAL_METHOD(PlainYearMonth, getISOFields, 0)
-  }
-  {  // -- P l a i n M o n t h D a y
-    // #sec-temporal-plainmonthday-objects
-    // #sec-temporal.plainmonthday
-    INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(PlainMonthDay, PLAIN_MONTH_DAY, 2)
-    INSTALL_TEMPORAL_FUNC(PlainMonthDay, from, 1)
-    // Notice there are no Temporal.PlainMonthDay.compare in the spec.
-
-    INSTALL_TEMPORAL_GETTER(PlainMonthDay, calendar)
-    INSTALL_TEMPORAL_GETTER(PlainMonthDay, monthCode)
-    INSTALL_TEMPORAL_GETTER(PlainMonthDay, day)
-
-    INSTALL_TEMPORAL_METHOD(PlainMonthDay, with, 1)
-    INSTALL_TEMPORAL_METHOD(PlainMonthDay, equals, 1)
-    INSTALL_TEMPORAL_METHOD(PlainMonthDay, toLocaleString, 0)
-    INSTALL_TEMPORAL_METHOD(PlainMonthDay, toString, 0)
-    INSTALL_TEMPORAL_METHOD(PlainMonthDay, toJSON, 0)
-    INSTALL_TEMPORAL_METHOD(PlainMonthDay, valueOf, 0)
-    INSTALL_TEMPORAL_METHOD(PlainMonthDay, toPlainDate, 1)
-    INSTALL_TEMPORAL_METHOD(PlainMonthDay, getISOFields, 0)
-  }
   {  // -- T i m e Z o n e
     // #sec-temporal-timezone-objects
     // #sec-temporal.timezone
@@ -2026,8 +1967,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_GETTER(Calendar, id)
 
     INSTALL_TEMPORAL_METHOD(Calendar, dateFromFields, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, yearMonthFromFields, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, monthDayFromFields, 1)
     INSTALL_TEMPORAL_METHOD(Calendar, dateAdd, 2)
     INSTALL_TEMPORAL_METHOD(Calendar, dateUntil, 2)
     INSTALL_TEMPORAL_METHOD(Calendar, year, 1)

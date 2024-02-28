@@ -29,9 +29,8 @@ namespace internal {
   }
 
 static const char* temporal_constructor_names[] = {
-    "Calendar",       "Duration",      "Instant",       "Now",
-    "PlainDate",      "PlainDateTime", "PlainMonthDay", "PlainTime",
-    "PlainYearMonth", "TimeZone",      "ZonedDateTime",
+    "Calendar",      "Duration",  "Instant",  "Now",           "PlainDate",
+    "PlainDateTime", "PlainTime", "TimeZone", "ZonedDateTime",
 };
 static_assert(
     sizeof(temporal_constructor_names) / sizeof(*temporal_constructor_names) ==
@@ -82,22 +81,6 @@ BUILTIN(TemporalConstructorDispatcher) {
                        args.atOrUndefined(isolate, 8),     // microsecond
                        args.atOrUndefined(isolate, 9),     // nanosecond
                        args.atOrUndefined(isolate, 10)));  // calendar_like
-    case kPlainYearMonth:
-      RETURN_RESULT_OR_FAILURE(
-          isolate, JSTemporalPlainYearMonth::Constructor(
-                       isolate, args.target(), args.new_target(),
-                       args.atOrUndefined(isolate, 1),    // iso_year
-                       args.atOrUndefined(isolate, 2),    // iso_month
-                       args.atOrUndefined(isolate, 3),    // calendar_like
-                       args.atOrUndefined(isolate, 4)));  // reference_iso_day
-    case kPlainMonthDay:
-      RETURN_RESULT_OR_FAILURE(
-          isolate, JSTemporalPlainMonthDay::Constructor(
-                       isolate, args.target(), args.new_target(),
-                       args.atOrUndefined(isolate, 1),    // iso_month
-                       args.atOrUndefined(isolate, 2),    // iso_day
-                       args.atOrUndefined(isolate, 3),    // calendar_like
-                       args.atOrUndefined(isolate, 4)));  // reference_iso_year
     case kZonedDateTime:
       RETURN_RESULT_OR_FAILURE(
           isolate, JSTemporalZonedDateTime::Constructor(
@@ -226,13 +209,6 @@ BUILTIN(TemporalStaticMethodDispatcher) {
     case kPlainDateTime:
       DISPATCH_METHOD2(PlainDateTime, From, from);
       DISPATCH_METHOD2(PlainDateTime, Compare, compare);
-      UNREACHABLE();
-    case kPlainYearMonth:
-      DISPATCH_METHOD2(PlainYearMonth, From, from);
-      DISPATCH_METHOD2(PlainYearMonth, Compare, compare);
-      UNREACHABLE();
-    case kPlainMonthDay:
-      DISPATCH_METHOD2(PlainMonthDay, From, from);
       UNREACHABLE();
     case kZonedDateTime:
       DISPATCH_METHOD2(ZonedDateTime, From, from);
@@ -416,8 +392,6 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
                                               isolate, calendar, prop, obj));
       }
       DISPATCH_VALUEOF(PlainDate);
-      DISPATCH_STRCMP_METHOD0(PlainDate, ToPlainYearMonth, toPlainYearMonth);
-      DISPATCH_STRCMP_METHOD0(PlainDate, ToPlainMonthDay, toPlainMonthDay);
       DISPATCH_STRCMP_METHOD2(PlainDate, Subtract, subtract);
       DISPATCH_STRCMP_METHOD1(PlainDate, WithCalendar, withCalendar);
       DISPATCH_STRCMP_METHOD0(PlainDate, GetISOFields, getISOFields);
@@ -491,9 +465,6 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
       DISPATCH_STRCMP_METHOD1(PlainDateTime, WithCalendar, withCalendar);
       DISPATCH_STRCMP_METHOD1(PlainDateTime, WithPlainTime, withPlainTime);
       DISPATCH_STRCMP_METHOD1(PlainDateTime, Equals, equals);
-      DISPATCH_STRCMP_METHOD0(PlainDateTime, ToPlainYearMonth,
-                              toPlainYearMonth);
-      DISPATCH_STRCMP_METHOD0(PlainDateTime, ToPlainMonthDay, toPlainMonthDay);
       DISPATCH_STRCMP_METHOD2(PlainDateTime, ToZonedDateTime, toZonedDateTime);
       DISPATCH_STRCMP_METHOD0(PlainDateTime, GetISOFields, getISOFields);
       DISPATCH_STRCMP_METHOD1(PlainDateTime, WithPlainDate, withPlainDate);
@@ -504,57 +475,6 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
       DISPATCH_STRCMP_METHOD0(PlainDateTime, ToPlainTime, toPlainTime);
       DISPATCH_STRCMP_METHOD2(PlainDateTime, ToLocaleString, toLocaleString);
       DISPATCH_STRCMP_METHOD2(PlainDateTime, Until, until);
-      UNREACHABLE();
-    }
-    case kPlainYearMonth: {
-      CHECK_RECEIVER(JSTemporalPlainYearMonth, obj, method_name.c_str());
-      DISPATCH_DIRECT_GETTER(calendar, calendar);
-      DISPATCH_METHOD1(PlainYearMonth, ToString, toString);
-      DISPATCH_METHOD2(PlainYearMonth, Add, add);
-      DISPATCH_METHOD2(PlainYearMonth, With, with);
-      DISPATCH_METHOD0(PlainYearMonth, ToJSON, toJSON);
-      if (prop->Equals(*factory->year_string()) ||
-#ifdef V8_INTL_SUPPORT
-          prop->Equals(*factory->era_string()) ||
-          prop->Equals(*factory->eraYear_string()) ||
-#endif
-          prop->Equals(*factory->month_string()) ||
-          prop->Equals(*factory->monthCode_string()) ||
-          prop->Equals(*factory->daysInMonth_string()) ||
-          prop->Equals(*factory->daysInYear_string()) ||
-          prop->Equals(*factory->monthsInYear_string()) ||
-          prop->Equals(*factory->inLeapYear_string())) {
-        Handle<JSReceiver> calendar{obj->calendar(), isolate};
-        RETURN_RESULT_OR_FAILURE(isolate, temporal::InvokeCalendarMethod(
-                                              isolate, calendar, prop, obj));
-      }
-      DISPATCH_VALUEOF(PlainYearMonth);
-      DISPATCH_STRCMP_METHOD2(PlainYearMonth, Subtract, subtract);
-      DISPATCH_STRCMP_METHOD1(PlainYearMonth, Equals, equals);
-      DISPATCH_STRCMP_METHOD1(PlainYearMonth, ToPlainDate, toPlainDate);
-      DISPATCH_STRCMP_METHOD0(PlainYearMonth, GetISOFields, getISOFields);
-      DISPATCH_STRCMP_METHOD2(PlainYearMonth, Since, since);
-      DISPATCH_STRCMP_METHOD2(PlainYearMonth, ToLocaleString, toLocaleString);
-      DISPATCH_STRCMP_METHOD2(PlainYearMonth, Until, until);
-      UNREACHABLE();
-    }
-    case kPlainMonthDay: {
-      CHECK_RECEIVER(JSTemporalPlainMonthDay, obj, method_name.c_str());
-      DISPATCH_DIRECT_GETTER(calendar, calendar);
-      DISPATCH_METHOD1(PlainMonthDay, ToString, toString);
-      DISPATCH_METHOD2(PlainMonthDay, With, with);
-      DISPATCH_METHOD0(PlainMonthDay, ToJSON, toJSON);
-      if (prop->Equals(*factory->monthCode_string()) ||
-          prop->Equals(*factory->day_string())) {
-        Handle<JSReceiver> calendar{obj->calendar(), isolate};
-        RETURN_RESULT_OR_FAILURE(isolate, temporal::InvokeCalendarMethod(
-                                              isolate, calendar, prop, obj));
-      }
-      DISPATCH_VALUEOF(PlainMonthDay);
-      DISPATCH_STRCMP_METHOD1(PlainMonthDay, Equals, equals);
-      DISPATCH_STRCMP_METHOD1(PlainMonthDay, ToPlainDate, toPlainDate);
-      DISPATCH_STRCMP_METHOD0(PlainMonthDay, GetISOFields, getISOFields);
-      DISPATCH_STRCMP_METHOD2(PlainMonthDay, ToLocaleString, toLocaleString);
       UNREACHABLE();
     }
     case kZonedDateTime: {
@@ -654,9 +574,6 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
       DISPATCH_STRCMP_METHOD1(ZonedDateTime, WithPlainDate, withPlainDate);
       DISPATCH_STRCMP_METHOD1(ZonedDateTime, WithPlainTime, withPlainTime);
       DISPATCH_STRCMP_METHOD1(ZonedDateTime, WithTimeZone, withTimeZone);
-      DISPATCH_STRCMP_METHOD0(ZonedDateTime, ToPlainYearMonth,
-                              toPlainYearMonth);
-      DISPATCH_STRCMP_METHOD0(ZonedDateTime, ToPlainMonthDay, toPlainMonthDay);
       DISPATCH_STRCMP_METHOD1(ZonedDateTime, Round, round);
       DISPATCH_STRCMP_METHOD2(ZonedDateTime, Subtract, subtract);
       DISPATCH_STRCMP_METHOD0(ZonedDateTime, GetISOFields, getISOFields);
@@ -745,10 +662,8 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
       DISPATCH_METHOD2(Calendar, MergeFields, mergeFields);
       DISPATCH_METHOD1(Calendar, Month, month);
       DISPATCH_METHOD1(Calendar, MonthCode, monthCode);
-      DISPATCH_METHOD2(Calendar, MonthDayFromFields, monthDayFromFields);
       DISPATCH_METHOD1(Calendar, MonthsInYear, monthsInYear);
       DISPATCH_METHOD1(Calendar, Year, year);
-      DISPATCH_METHOD2(Calendar, YearMonthFromFields, yearMonthFromFields);
       DISPATCH_METHOD1(Calendar, WeekOfYear, weekOfYear);
 #ifdef V8_INTL_SUPPORT
       DISPATCH_METHOD1(Calendar, Era, era);

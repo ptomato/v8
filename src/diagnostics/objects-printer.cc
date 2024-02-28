@@ -2683,16 +2683,6 @@ void JSTemporalInstant::JSTemporalInstantPrint(std::ostream& os) {
   JSObjectPrintBody(os, *this);
 }
 
-void JSTemporalPlainYearMonth::JSTemporalPlainYearMonthPrint(std::ostream& os) {
-  JSObjectPrintHeader(os, *this, "JSTemporalPlainYearMonth");
-  JSObjectPrintBody(os, *this);
-}
-
-void JSTemporalPlainMonthDay::JSTemporalPlainMonthDayPrint(std::ostream& os) {
-  JSObjectPrintHeader(os, *this, "JSTemporalPlainMonthDay");
-  JSObjectPrintBody(os, *this);
-}
-
 void JSTemporalTimeZone::JSTemporalTimeZonePrint(std::ostream& os) {
   JSObjectPrintHeader(os, *this, "JSTemporalTimeZone");
   JSObjectPrintBody(os, *this);

@@ -2545,12 +2545,8 @@ int JSObject::GetHeaderSize(InstanceType type,
       return JSTemporalPlainDate::kHeaderSize;
     case JS_TEMPORAL_PLAIN_DATE_TIME_TYPE:
       return JSTemporalPlainDateTime::kHeaderSize;
-    case JS_TEMPORAL_PLAIN_MONTH_DAY_TYPE:
-      return JSTemporalPlainMonthDay::kHeaderSize;
     case JS_TEMPORAL_PLAIN_TIME_TYPE:
       return JSTemporalPlainTime::kHeaderSize;
-    case JS_TEMPORAL_PLAIN_YEAR_MONTH_TYPE:
-      return JSTemporalPlainYearMonth::kHeaderSize;
     case JS_TEMPORAL_TIME_ZONE_TYPE:
       return JSTemporalTimeZone::kHeaderSize;
     case JS_TEMPORAL_ZONED_DATE_TIME_TYPE:

@@ -567,23 +567,6 @@ bool ISODateTimeWithinLimits(Isolate* isolate,
   // 5. Return true.
 }
 
-// #sec-temporal-isoyearmonthwithinlimits
-bool ISOYearMonthWithinLimits(int32_t year, int32_t month) {
-  TEMPORAL_ENTER_FUNC();
-  // 1. Assert: year and month are integers.
-  // 2. If year < −271821 or year > 275760, then
-  // a. Return false.
-  if (year < -271821 || year > 275760) return false;
-  // 3. If year is −271821 and month < 4, then
-  // a. Return false.
-  if (year == -271821 && month < 4) return false;
-  // 4. If year is 275760 and month > 9, then
-  // a. Return false.
-  if (year == 275760 && month > 9) return false;
-  // 5. Return true.
-  return true;
-}
-
 #define ORDINARY_CREATE_FROM_CONSTRUCTOR(obj, target, new_target, T)       \
   Handle<JSReceiver> new_target_receiver =                                 \
       Handle<JSReceiver>::cast(new_target);                                \
@@ -822,100 +805,6 @@ MaybeHandle<JSTemporalPlainTime> CreateTemporalTime(Isolate* isolate,
   TEMPORAL_ENTER_FUNC();
   return CreateTemporalTime(isolate, CONSTRUCTOR(plain_time),
                             CONSTRUCTOR(plain_time), time);
-}
-
-// #sec-temporal-createtemporalmonthday
-MaybeHandle<JSTemporalPlainMonthDay> CreateTemporalMonthDay(
-    Isolate* isolate, Handle<JSFunction> target, Handle<HeapObject> new_target,
-    int32_t iso_month, int32_t iso_day, Handle<JSReceiver> calendar,
-    int32_t reference_iso_year) {
-  TEMPORAL_ENTER_FUNC();
-  // 1. Assert: isoMonth, isoDay, and referenceISOYear are integers.
-  // 2. Assert: Type(calendar) is Object.
-  // 3. If ! IsValidISODate(referenceISOYear, isoMonth, isoDay) is false, throw
-  if (!IsValidISODate(isolate, {reference_iso_year, iso_month, iso_day})) {
-    // a RangeError exception.
-    THROW_INVALID_RANGE(JSTemporalPlainMonthDay);
-  }
-  // 4. If ISODateTimeWithinLimits(referenceISOYear, isoMonth, isoDay, 12, 0, 0,
-  // 0, 0, 0) is false, throw a RangeError exception.
-  if (!ISODateTimeWithinLimits(
-          isolate,
-          {{reference_iso_year, iso_month, iso_day}, {12, 0, 0, 0, 0, 0}})) {
-    THROW_INVALID_RANGE(JSTemporalPlainMonthDay);
-  }
-
-  // 5. If newTarget is not present, set it to %Temporal.PlainMonthDay%.
-  // 6. Let object be ? OrdinaryCreateFromConstructor(newTarget,
-  // "%Temporal.PlainMonthDay.prototype%", « [[InitializedTemporalMonthDay]],
-  // [[ISOMonth]], [[ISODay]], [[ISOYear]], [[Calendar]] »).
-  ORDINARY_CREATE_FROM_CONSTRUCTOR(object, target, new_target,
-                                   JSTemporalPlainMonthDay)
-  object->set_year_month_day(0);
-  // 7. Set object.[[ISOMonth]] to isoMonth.
-  object->set_iso_month(iso_month);
-  // 8. Set object.[[ISODay]] to isoDay.
-  object->set_iso_day(iso_day);
-  // 9. Set object.[[Calendar]] to calendar.
-  object->set_calendar(*calendar);
-  // 10. Set object.[[ISOYear]] to referenceISOYear.
-  object->set_iso_year(reference_iso_year);
-  // 11. Return object.
-  return object;
-}
-
-MaybeHandle<JSTemporalPlainMonthDay> CreateTemporalMonthDay(
-    Isolate* isolate, int32_t iso_month, int32_t iso_day,
-    Handle<JSReceiver> calendar, int32_t reference_iso_year) {
-  return CreateTemporalMonthDay(isolate, CONSTRUCTOR(plain_month_day),
-                                CONSTRUCTOR(plain_month_day), iso_month,
-                                iso_day, calendar, reference_iso_year);
-}
-
-// #sec-temporal-createtemporalyearmonth
-MaybeHandle<JSTemporalPlainYearMonth> CreateTemporalYearMonth(
-    Isolate* isolate, Handle<JSFunction> target, Handle<HeapObject> new_target,
-    int32_t iso_year, int32_t iso_month, Handle<JSReceiver> calendar,
-    int32_t reference_iso_day) {
-  TEMPORAL_ENTER_FUNC();
-  // 1. Assert: isoYear, isoMonth, and referenceISODay are integers.
-  // 2. Assert: Type(calendar) is Object.
-  // 3. If ! IsValidISODate(isoYear, isoMonth, referenceISODay) is false, throw
-  // a RangeError exception.
-  if (!IsValidISODate(isolate, {iso_year, iso_month, reference_iso_day})) {
-    THROW_INVALID_RANGE(JSTemporalPlainYearMonth);
-  }
-  // 4. If ! ISOYearMonthWithinLimits(isoYear, isoMonth) is false, throw a
-  // RangeError exception.
-  if (!ISOYearMonthWithinLimits(iso_year, iso_month)) {
-    THROW_INVALID_RANGE(JSTemporalPlainYearMonth);
-  }
-  // 5. If newTarget is not present, set it to %Temporal.PlainYearMonth%.
-  // 6. Let object be ? OrdinaryCreateFromConstructor(newTarget,
-  // "%Temporal.PlainYearMonth.prototype%", « [[InitializedTemporalYearMonth]],
-  // [[ISOYear]], [[ISOMonth]], [[ISODay]], [[Calendar]] »).
-  ORDINARY_CREATE_FROM_CONSTRUCTOR(object, target, new_target,
-                                   JSTemporalPlainYearMonth)
-  object->set_year_month_day(0);
-  // 7. Set object.[[ISOYear]] to isoYear.
-  object->set_iso_year(iso_year);
-  // 8. Set object.[[ISOMonth]] to isoMonth.
-  object->set_iso_month(iso_month);
-  // 9. Set object.[[Calendar]] to calendar.
-  object->set_calendar(*calendar);
-  // 10. Set object.[[ISODay]] to referenceISODay.
-  object->set_iso_day(reference_iso_day);
-  // 11. Return object.
-  return object;
-}
-
-MaybeHandle<JSTemporalPlainYearMonth> CreateTemporalYearMonth(
-    Isolate* isolate, int32_t iso_year, int32_t iso_month,
-    Handle<JSReceiver> calendar, int32_t reference_iso_day) {
-  TEMPORAL_ENTER_FUNC();
-  return CreateTemporalYearMonth(isolate, CONSTRUCTOR(plain_year_month),
-                                 CONSTRUCTOR(plain_year_month), iso_year,
-                                 iso_month, calendar, reference_iso_day);
 }
 
 // #sec-temporal-createtemporalzoneddatetime
@@ -1966,8 +1855,7 @@ MaybeHandle<JSReceiver> GetTemporalCalendarWithISODefault(
 
   Factory* factory = isolate->factory();
   // 1. If item has an [[InitializedTemporalDate]],
-  // [[InitializedTemporalDateTime]], [[InitializedTemporalMonthDay]],
-  // [[InitializedTemporalTime]], [[InitializedTemporalYearMonth]], or
+  // [[InitializedTemporalDateTime]], [[InitializedTemporalTime]], or
   // [[InitializedTemporalZonedDateTime]] internal slot, then a. Return
   // item.[[Calendar]].
   if (IsJSTemporalPlainDate(*item)) {
@@ -1977,16 +1865,8 @@ MaybeHandle<JSReceiver> GetTemporalCalendarWithISODefault(
     return handle(Handle<JSTemporalPlainDateTime>::cast(item)->calendar(),
                   isolate);
   }
-  if (IsJSTemporalPlainMonthDay(*item)) {
-    return handle(Handle<JSTemporalPlainMonthDay>::cast(item)->calendar(),
-                  isolate);
-  }
   if (IsJSTemporalPlainTime(*item)) {
     return handle(Handle<JSTemporalPlainTime>::cast(item)->calendar(), isolate);
-  }
-  if (IsJSTemporalPlainYearMonth(*item)) {
-    return handle(Handle<JSTemporalPlainYearMonth>::cast(item)->calendar(),
-                  isolate);
   }
   if (IsJSTemporalZonedDateTime(*item)) {
     return handle(Handle<JSTemporalZonedDateTime>::cast(item)->calendar(),
@@ -2140,7 +2020,7 @@ V8_WARN_UNUSED_RESULT MaybeHandle<JSReceiver> PreparePartialTemporalFields(
                                         RequiredFields::kNone, true);
 }
 
-// Template for DateFromFields, YearMonthFromFields, and MonthDayFromFields
+// Template for DateFromFields
 template <typename T>
 MaybeHandle<T> FromFields(Isolate* isolate, Handle<JSReceiver> calendar,
                           Handle<JSReceiver> fields, Handle<Object> options,
@@ -2170,41 +2050,30 @@ MaybeHandle<JSTemporalPlainDate> DateFromFields(Isolate* isolate,
                                                 Handle<JSReceiver> calendar,
                                                 Handle<JSReceiver> fields,
                                                 Handle<Object> options) {
-  return FromFields<JSTemporalPlainDate>(
-      isolate, calendar, fields, options,
-      isolate->factory()->dateFromFields_string(), JS_TEMPORAL_PLAIN_DATE_TYPE);
-}
-
-// #sec-temporal-yearmonthfromfields
-MaybeHandle<JSTemporalPlainYearMonth> YearMonthFromFields(
-    Isolate* isolate, Handle<JSReceiver> calendar, Handle<JSReceiver> fields,
-    Handle<Object> options) {
-  return FromFields<JSTemporalPlainYearMonth>(
-      isolate, calendar, fields, options,
-      isolate->factory()->yearMonthFromFields_string(),
-      JS_TEMPORAL_PLAIN_YEAR_MONTH_TYPE);
-}
-MaybeHandle<JSTemporalPlainYearMonth> YearMonthFromFields(
-    Isolate* isolate, Handle<JSReceiver> calendar, Handle<JSReceiver> fields) {
-  // 1. If options is not present, set options to undefined.
-  return YearMonthFromFields(isolate, calendar, fields,
-                             isolate->factory()->undefined_value());
-}
-
-// #sec-temporal-monthdayfromfields
-MaybeHandle<JSTemporalPlainMonthDay> MonthDayFromFields(
-    Isolate* isolate, Handle<JSReceiver> calendar, Handle<JSReceiver> fields,
-    Handle<Object> options) {
-  return FromFields<JSTemporalPlainMonthDay>(
-      isolate, calendar, fields, options,
-      isolate->factory()->monthDayFromFields_string(),
-      JS_TEMPORAL_PLAIN_MONTH_DAY_TYPE);
-}
-MaybeHandle<JSTemporalPlainMonthDay> MonthDayFromFields(
-    Isolate* isolate, Handle<JSReceiver> calendar, Handle<JSReceiver> fields) {
-  // 1. If options is not present, set options to undefined.
-  return MonthDayFromFields(isolate, calendar, fields,
-                            isolate->factory()->undefined_value());
+  Handle<Object> function;
+  ASSIGN_RETURN_ON_EXCEPTION(
+      isolate, function,
+      Object::GetProperty(isolate, calendar,
+                          isolate->factory()->dateFromFields_string()),
+      JSTemporalPlainDate);
+  if (!IsCallable(*function)) {
+    THROW_NEW_ERROR(isolate,
+                    NewTypeError(MessageTemplate::kCalledNonCallable,
+                                 isolate->factory()->dateFromFields_string()),
+                    JSTemporalPlainDate);
+  }
+  Handle<Object> argv[] = {fields, options};
+  Handle<Object> result;
+  ASSIGN_RETURN_ON_EXCEPTION(
+      isolate, result, Execution::Call(isolate, function, calendar, 2, argv),
+      JSTemporalPlainDate);
+  if ((!IsHeapObject(*result)) ||
+      HeapObject::cast(*result)->map()->instance_type() !=
+          JS_TEMPORAL_PLAIN_DATE_TYPE) {
+    THROW_NEW_ERROR(isolate, NEW_TEMPORAL_INVALID_ARG_TYPE_ERROR(),
+                    JSTemporalPlainDate);
+  }
+  return Handle<JSTemporalPlainDate>::cast(result);
 }
 
 // #sec-temporal-totemporaloverflow
@@ -2319,8 +2188,7 @@ MaybeHandle<JSReceiver> ToTemporalCalendar(
   // 1.If Type(temporalCalendarLike) is Object, then
   if (IsJSReceiver(*temporal_calendar_like)) {
     // a. If temporalCalendarLike has an [[InitializedTemporalDate]],
-    // [[InitializedTemporalDateTime]], [[InitializedTemporalMonthDay]],
-    // [[InitializedTemporalTime]], [[InitializedTemporalYearMonth]], or
+    // [[InitializedTemporalDateTime]], [[InitializedTemporalTime]], or
     // [[InitializedTemporalZonedDateTime]] internal slot, then i. Return
     // temporalCalendarLike.[[Calendar]].
 
@@ -2331,9 +2199,7 @@ MaybeHandle<JSReceiver> ToTemporalCalendar(
 
     EXTRACT_CALENDAR(PlainDate, temporal_calendar_like)
     EXTRACT_CALENDAR(PlainDateTime, temporal_calendar_like)
-    EXTRACT_CALENDAR(PlainMonthDay, temporal_calendar_like)
     EXTRACT_CALENDAR(PlainTime, temporal_calendar_like)
-    EXTRACT_CALENDAR(PlainYearMonth, temporal_calendar_like)
     EXTRACT_CALENDAR(ZonedDateTime, temporal_calendar_like)
 
 #undef EXTRACT_CALENDAR
@@ -2432,23 +2298,6 @@ Handle<FixedArray> DayMonthMonthCodeYearInFixedArray(Isolate* isolate) {
   field_names->set(1, ReadOnlyRoots(isolate).month_string());
   field_names->set(2, ReadOnlyRoots(isolate).monthCode_string());
   field_names->set(3, ReadOnlyRoots(isolate).year_string());
-  return field_names;
-}
-
-// Create « "month", "monthCode", "year" » in several AOs.
-Handle<FixedArray> MonthMonthCodeYearInFixedArray(Isolate* isolate) {
-  Handle<FixedArray> field_names = isolate->factory()->NewFixedArray(3);
-  field_names->set(0, ReadOnlyRoots(isolate).month_string());
-  field_names->set(1, ReadOnlyRoots(isolate).monthCode_string());
-  field_names->set(2, ReadOnlyRoots(isolate).year_string());
-  return field_names;
-}
-
-// Create « "monthCode", "year" » in several AOs.
-Handle<FixedArray> MonthCodeYearInFixedArray(Isolate* isolate) {
-  Handle<FixedArray> field_names = isolate->factory()->NewFixedArray(2);
-  field_names->set(0, ReadOnlyRoots(isolate).monthCode_string());
-  field_names->set(1, ReadOnlyRoots(isolate).year_string());
   return field_names;
 }
 
@@ -3303,86 +3152,6 @@ MaybeHandle<String> TemporalDateToString(
   return builder.Finish().ToHandleChecked();
 }
 
-// #sec-temporal-temporalmonthdaytostring
-MaybeHandle<String> TemporalMonthDayToString(
-    Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day,
-    ShowCalendar show_calendar) {
-  // 1. Assert: Type(monthDay) is Object.
-  // 2. Assert: monthDay has an [[InitializedTemporalMonthDay]] internal slot.
-  IncrementalStringBuilder builder(isolate);
-  // 6. Let calendarID be ? ToString(monthDay.[[Calendar]]).
-  Handle<String> calendar_id;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, calendar_id,
-      Object::ToString(isolate, handle(month_day->calendar(), isolate)),
-      String);
-  // 7. If showCalendar is "always" or if calendarID is not "iso8601", then
-  if (show_calendar == ShowCalendar::kAlways ||
-      !String::Equals(isolate, calendar_id,
-                      isolate->factory()->iso8601_string())) {
-    // a. Let year be ! PadISOYear(monthDay.[[ISOYear]]).
-    PadISOYear(&builder, month_day->iso_year());
-    // b. Set result to the string-concatenation of year, the code unit
-    // 0x002D (HYPHEN-MINUS), and result.
-    builder.AppendCharacter('-');
-  }
-  // 3. Let month be ToZeroPaddedDecimalString(monthDay.[[ISOMonth]], 2).
-  ToZeroPaddedDecimalString(&builder, month_day->iso_month(), 2);
-  // 5. Let result be the string-concatenation of month, the code unit 0x002D
-  // (HYPHEN-MINUS), and day.
-  builder.AppendCharacter('-');
-  // 4. Let day be ToZeroPaddedDecimalString(monthDay.[[ISODay]], 2).
-  ToZeroPaddedDecimalString(&builder, month_day->iso_day(), 2);
-  // 8. Let calendarString be ! FormatCalendarAnnotation(calendarID,
-  // showCalendar).
-  Handle<String> calendar_string =
-      FormatCalendarAnnotation(isolate, calendar_id, show_calendar);
-  // 9. Set result to the string-concatenation of result and calendarString.
-  builder.AppendString(calendar_string);
-  // 10. Return result.
-  return builder.Finish().ToHandleChecked();
-}
-
-// #sec-temporal-temporalyearmonthtostring
-MaybeHandle<String> TemporalYearMonthToString(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-    ShowCalendar show_calendar) {
-  // 1. Assert: Type(yearMonth) is Object.
-  // 2. Assert: yearMonth has an [[InitializedTemporalYearMonth]] internal slot.
-  IncrementalStringBuilder builder(isolate);
-  // 3. Let year be ! PadISOYear(yearMonth.[[ISOYear]]).
-  PadISOYear(&builder, year_month->iso_year());
-  // 4. Let month be ToZeroPaddedDecimalString(yearMonth.[[ISOMonth]], 2).
-  // 5. Let result be the string-concatenation of year, the code unit 0x002D
-  // (HYPHEN-MINUS), and month.
-  builder.AppendCharacter('-');
-  ToZeroPaddedDecimalString(&builder, year_month->iso_month(), 2);
-  // 6. Let calendarID be ? ToString(yearMonth.[[Calendar]]).
-  Handle<String> calendar_id;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, calendar_id,
-      Object::ToString(isolate, handle(year_month->calendar(), isolate)),
-      String);
-  // 7. If showCalendar is "always" or if *_calendarID_ is not *"iso8601", then
-  if (show_calendar == ShowCalendar::kAlways ||
-      !String::Equals(isolate, calendar_id,
-                      isolate->factory()->iso8601_string())) {
-    // a. Let day be ToZeroPaddedDecimalString(yearMonth.[[ISODay]], 2).
-    // b. Set result to the string-concatenation of result, the code unit 0x002D
-    // (HYPHEN-MINUS), and day.
-    builder.AppendCharacter('-');
-    ToZeroPaddedDecimalString(&builder, year_month->iso_day(), 2);
-  }
-  // 8. Let calendarString be ! FormatCalendarAnnotation(calendarID,
-  // showCalendar).
-  Handle<String> calendar_string =
-      FormatCalendarAnnotation(isolate, calendar_id, show_calendar);
-  // 9. Set result to the string-concatenation of result and calendarString.
-  builder.AppendString(calendar_string);
-  // 10. Return result.
-  return builder.Finish().ToHandleChecked();
-}
-
 // #sec-temporal-builtintimezonegetoffsetstringfor
 MaybeHandle<String> BuiltinTimeZoneGetOffsetStringFor(
     Isolate* isolate, Handle<JSReceiver> time_zone,
@@ -3406,14 +3175,14 @@ Maybe<DateTimeRecordWithCalendar> ParseISODateTime(
 // Note: We split ParseISODateTime to two function because the spec text
 // repeates some parsing unnecessary. If a function is calling ParseISODateTime
 // from a AO which already call ParseText() for TemporalDateTimeString,
-// TemporalInstantString, TemporalMonthDayString, TemporalTimeString,
-// TemporalYearMonthString, TemporalZonedDateTimeString. But for the usage in
+// TemporalInstantString, TemporalTimeString,
+// TemporalZonedDateTimeString. But for the usage in
 // ParseTemporalTimeZoneString, we use the following version.
 Maybe<DateTimeRecordWithCalendar> ParseISODateTime(Isolate* isolate,
                                                    Handle<String> iso_string) {
   // 2. For each nonterminal goal of « TemporalDateTimeString,
-  // TemporalInstantString, TemporalMonthDayString, TemporalTimeString,
-  // TemporalYearMonthString, TemporalZonedDateTimeString », do
+  // TemporalInstantString, TemporalTimeString, TemporalZonedDateTimeString »,
+  // do
 
   // a. If parseResult is not a Parse Node, set parseResult to
   // ParseText(StringToCodePoints(isoString), goal).
@@ -3423,13 +3192,7 @@ Maybe<DateTimeRecordWithCalendar> ParseISODateTime(Isolate* isolate,
           .has_value() ||
       (parsed = TemporalParser::ParseTemporalInstantString(isolate, iso_string))
           .has_value() ||
-      (parsed =
-           TemporalParser::ParseTemporalMonthDayString(isolate, iso_string))
-          .has_value() ||
       (parsed = TemporalParser::ParseTemporalTimeString(isolate, iso_string))
-          .has_value() ||
-      (parsed =
-           TemporalParser::ParseTemporalYearMonthString(isolate, iso_string))
           .has_value() ||
       (parsed = TemporalParser::ParseTemporalZonedDateTimeString(isolate,
                                                                  iso_string))
@@ -6381,84 +6144,6 @@ Maybe<DateRecord> RegulateISODate(Isolate* isolate, ShowOverflow overflow,
                                   const DateRecord& date);
 Maybe<int32_t> ResolveISOMonth(Isolate* isolate, Handle<JSReceiver> fields);
 
-// #sec-temporal-isomonthdayfromfields
-Maybe<DateRecord> ISOMonthDayFromFields(Isolate* isolate,
-                                        Handle<JSReceiver> fields,
-                                        Handle<JSReceiver> options,
-                                        const char* method_name) {
-  Factory* factory = isolate->factory();
-  // 1. Assert: Type(fields) is Object.
-  // 2. Set fields to ? PrepareTemporalFields(fields, « "day", "month",
-  // "monthCode", "year" », «"day"»).
-  Handle<FixedArray> field_names = DayMonthMonthCodeYearInFixedArray(isolate);
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, fields,
-      PrepareTemporalFields(isolate, fields, field_names, RequiredFields::kDay),
-      Nothing<DateRecord>());
-  // 3. Let overflow be ? ToTemporalOverflow(options).
-  ShowOverflow overflow;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, overflow, ToTemporalOverflow(isolate, options, method_name),
-      Nothing<DateRecord>());
-  // 4. Let month be ! Get(fields, "month").
-  Handle<Object> month_obj =
-      JSReceiver::GetProperty(isolate, fields, factory->month_string())
-          .ToHandleChecked();
-  // 5. Let monthCode be ! Get(fields, "monthCode").
-  Handle<Object> month_code_obj =
-      JSReceiver::GetProperty(isolate, fields, factory->monthCode_string())
-          .ToHandleChecked();
-  // 6. Let year be ! Get(fields, "year").
-  Handle<Object> year_obj =
-      JSReceiver::GetProperty(isolate, fields, factory->year_string())
-          .ToHandleChecked();
-  // 7. If month is not undefined, and monthCode and year are both undefined,
-  // then
-  if (!IsUndefined(*month_obj, isolate) &&
-      IsUndefined(*month_code_obj, isolate) &&
-      IsUndefined(*year_obj, isolate)) {
-    // a. Throw a TypeError exception.
-    THROW_NEW_ERROR_RETURN_VALUE(isolate, NEW_TEMPORAL_INVALID_ARG_TYPE_ERROR(),
-                                 Nothing<DateRecord>());
-  }
-  // 8. Set month to ? ResolveISOMonth(fields).
-  DateRecord result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(isolate, result.month,
-                                         ResolveISOMonth(isolate, fields),
-                                         Nothing<DateRecord>());
-
-  // 9. Let day be ! Get(fields, "day").
-  Handle<Object> day_obj =
-      JSReceiver::GetProperty(isolate, fields, factory->day_string())
-          .ToHandleChecked();
-  // 10. Assert: Type(day) is Number.
-  // Note: "day" in fields is always converted by
-  // ToIntegerThrowOnInfinity inside the PrepareTemporalFields above.
-  // Therefore the day_obj is always an integer.
-  DCHECK(IsSmi(*day_obj) || IsHeapNumber(*day_obj));
-  result.day = FastD2I(floor(Object::Number(*day_obj)));
-  // 11. Let referenceISOYear be 1972 (the first leap year after the Unix
-  // epoch).
-  int32_t reference_iso_year = 1972;
-  // 12. If monthCode is undefined, then
-  if (IsUndefined(*month_code_obj, isolate)) {
-    result.year = FastD2I(floor(Object::Number(*year_obj)));
-    // a. Let result be ? RegulateISODate(year, month, day, overflow).
-  } else {
-    // 13. Else,
-    // a. Let result be ? RegulateISODate(referenceISOYear, month, day,
-    // overflow).
-    result.year = reference_iso_year;
-  }
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, result, RegulateISODate(isolate, overflow, result),
-      Nothing<DateRecord>());
-  // 14. Return the new Record { [[Month]]: result.[[Month]], [[Day]]:
-  // result.[[Day]], [[ReferenceISOYear]]: referenceISOYear }.
-  result.year = reference_iso_year;
-  return Just(result);
-}
-
 }  // namespace
 
 // #sec-temporal.duration
@@ -7985,22 +7670,6 @@ MaybeHandle<Oddball> JSTemporalDuration::Blank(
 }
 
 namespace {
-// #sec-temporal-createnegateddurationrecord
-// see https://github.com/tc39/proposal-temporal/pull/2281
-Maybe<DurationRecord> CreateNegatedDurationRecord(
-    Isolate* isolate, const DurationRecord& duration) {
-  return CreateDurationRecord(
-      isolate,
-      {-duration.years,
-       -duration.months,
-       -duration.weeks,
-       {-duration.time_duration.days, -duration.time_duration.hours,
-        -duration.time_duration.minutes, -duration.time_duration.seconds,
-        -duration.time_duration.milliseconds,
-        -duration.time_duration.microseconds,
-        -duration.time_duration.nanoseconds}});
-}
-
 // #sec-temporal-createnegatedtemporalduration
 MaybeHandle<JSTemporalDuration> CreateNegatedTemporalDuration(
     Isolate* isolate, Handle<JSTemporalDuration> duration) {
@@ -9550,11 +9219,9 @@ int32_t ToISODayOfYear(Isolate* isolate, const DateRecord& date) {
          isolate->date_cache()->DaysFromYearMonth(date.year, 0);
 }
 
-bool IsPlainDatePlainDateTimeOrPlainYearMonth(
-    Handle<Object> temporal_date_like) {
+bool IsPlainDateOrPlainDateTime(Handle<Object> temporal_date_like) {
   return IsJSTemporalPlainDate(*temporal_date_like) ||
-         IsJSTemporalPlainDateTime(*temporal_date_like) ||
-         IsJSTemporalPlainYearMonth(*temporal_date_like);
+         IsJSTemporalPlainDateTime(*temporal_date_like);
 }
 
 // #sec-temporal-toisodayofweek
@@ -9620,31 +9287,6 @@ Maybe<DateRecord> RegulateISODate(Isolate* isolate, ShowOverflow overflow,
       // c. Return the Record { [[Year]]: year, [[Month]]: month, [[Day]]: day
       // }.
       return Just(result);
-  }
-}
-
-// #sec-temporal-regulateisoyearmonth
-Maybe<int32_t> RegulateISOYearMonth(Isolate* isolate, ShowOverflow overflow,
-                                    int32_t month) {
-  // 1. Assert: year and month are integers.
-  // 2. Assert: overflow is either "constrain" or "reject".
-  switch (overflow) {
-    // 3. If overflow is "constrain", then
-    case ShowOverflow::kConstrain:
-      // a. Return ! ConstrainISOYearMonth(year, month).
-      return Just(std::max(std::min(month, 12), 1));
-    // 4. If overflow is "reject", then
-    case ShowOverflow::kReject:
-      // a. If ! IsValidISOMonth(month) is false, throw a RangeError exception.
-      if (month < 1 || 12 < month) {
-        THROW_NEW_ERROR_RETURN_VALUE(isolate,
-                                     NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
-                                     Nothing<int32_t>());
-      }
-      // b. Return the new Record { [[Year]]: year, [[Month]]: month }.
-      return Just(month);
-    default:
-      UNREACHABLE();
   }
 }
 
@@ -9995,54 +9637,6 @@ Maybe<DateDurationRecord> DifferenceISODate(Isolate* isolate,
   }
 }
 
-// #sec-temporal-isoyearmonthfromfields
-Maybe<DateRecord> ISOYearMonthFromFields(Isolate* isolate,
-                                         Handle<JSReceiver> fields,
-                                         Handle<JSReceiver> options,
-                                         const char* method_name) {
-  Factory* factory = isolate->factory();
-  // 1. Assert: Type(fields) is Object.
-  // 2. Set fields to ? PrepareTemporalFields(fields, « "month", "monthCode",
-  // "year" », «»).
-  Handle<FixedArray> field_names = factory->NewFixedArray(3);
-  field_names->set(0, ReadOnlyRoots(isolate).month_string());
-  field_names->set(1, ReadOnlyRoots(isolate).monthCode_string());
-  field_names->set(2, ReadOnlyRoots(isolate).year_string());
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, fields,
-      PrepareTemporalFields(isolate, fields, field_names,
-                            RequiredFields::kNone),
-      Nothing<DateRecord>());
-  // 3. Let overflow be ? ToTemporalOverflow(options).
-  ShowOverflow overflow;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, overflow, ToTemporalOverflow(isolate, options, method_name),
-      Nothing<DateRecord>());
-
-  // 4. Let year be ! Get(fields, "year").
-  Handle<Object> year_obj =
-      JSReceiver::GetProperty(isolate, fields, factory->year_string())
-          .ToHandleChecked();
-  // 5. If year is undefined, throw a TypeError exception.
-  if (IsUndefined(*year_obj, isolate)) {
-    THROW_NEW_ERROR_RETURN_VALUE(isolate, NEW_TEMPORAL_INVALID_ARG_TYPE_ERROR(),
-                                 Nothing<DateRecord>());
-  }
-  DateRecord result;
-  result.year = FastD2I(floor(Object::Number(*year_obj)));
-  // 6. Let month be ? ResolveISOMonth(fields).
-  int32_t month;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, month, ResolveISOMonth(isolate, fields), Nothing<DateRecord>());
-  // 7. Let result be ? RegulateISOYearMonth(year, month, overflow).
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, result.month, RegulateISOYearMonth(isolate, overflow, month),
-      Nothing<DateRecord>());
-  // 8. Return the new Record { [[Year]]: result.[[Year]], [[Month]]:
-  // result.[[Month]], [[ReferenceISODay]]: 1 }.
-  result.day = 1;
-  return Just(result);
-}
 // #sec-temporal-toisoweekofyear
 int32_t ToISOWeekOfYear(Isolate* isolate, const DateRecord& date) {
   TEMPORAL_ENTER_FUNC();
@@ -10198,9 +9792,9 @@ MaybeHandle<Smi> JSTemporalCalendar::DaysInYear(
   // [[InitializedTemporalCalendar]]).
   // 3. Assert: calendar.[[Identifier]] is "iso8601".
   // 4. If Type(temporalDateLike) is not Object or temporalDateLike does not
-  // have an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]] or
-  // [[InitializedTemporalYearMonth]] internal slot, then
-  if (!IsPlainDatePlainDateTimeOrPlainYearMonth(temporal_date_like)) {
+  // have an [[InitializedTemporalDate]] or [[InitializedTemporalDateTime]]
+  // internal slot, then
+  if (!IsPlainDateOrPlainDateTime(temporal_date_like)) {
     // a. Set temporalDateLike to ? ToTemporalDate(temporalDateLike).
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, temporal_date_like,
@@ -10213,13 +9807,10 @@ MaybeHandle<Smi> JSTemporalCalendar::DaysInYear(
   int32_t year;
   if (IsJSTemporalPlainDate(*temporal_date_like)) {
     year = Handle<JSTemporalPlainDate>::cast(temporal_date_like)->iso_year();
-  } else if (IsJSTemporalPlainDateTime(*temporal_date_like)) {
+  } else {
+    DCHECK(IsJSTemporalPlainDateTime(*temporal_date_like));
     year =
         Handle<JSTemporalPlainDateTime>::cast(temporal_date_like)->iso_year();
-  } else {
-    DCHECK(IsJSTemporalPlainYearMonth(*temporal_date_like));
-    year =
-        Handle<JSTemporalPlainYearMonth>::cast(temporal_date_like)->iso_year();
   }
   int32_t days_in_year = ISODaysInYear(isolate, year);
   // 6. Return 𝔽(daysInYear).
@@ -10235,9 +9826,9 @@ MaybeHandle<Smi> JSTemporalCalendar::DaysInMonth(
   // [[InitializedTemporalCalendar]]).
   // 3. Assert: calendar.[[Identifier]] is "iso8601".
   // 4. If Type(temporalDateLike) is not Object or temporalDateLike does not
-  // have an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]] or
-  // [[InitializedTemporalYearMonth]] internal slot, then
-  if (!IsPlainDatePlainDateTimeOrPlainYearMonth(temporal_date_like)) {
+  // have an [[InitializedTemporalDate]] or [[InitializedTemporalDateTime]]
+  // internal slot, then
+  if (!IsPlainDateOrPlainDateTime(temporal_date_like)) {
     // a. Set temporalDateLike to ? ToTemporalDate(temporalDateLike).
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, temporal_date_like,
@@ -10253,17 +9844,12 @@ MaybeHandle<Smi> JSTemporalCalendar::DaysInMonth(
   if (IsJSTemporalPlainDate(*temporal_date_like)) {
     year = Handle<JSTemporalPlainDate>::cast(temporal_date_like)->iso_year();
     month = Handle<JSTemporalPlainDate>::cast(temporal_date_like)->iso_month();
-  } else if (IsJSTemporalPlainDateTime(*temporal_date_like)) {
+  } else {
+    DCHECK(IsJSTemporalPlainDateTime(*temporal_date_like));
     year =
         Handle<JSTemporalPlainDateTime>::cast(temporal_date_like)->iso_year();
     month =
         Handle<JSTemporalPlainDateTime>::cast(temporal_date_like)->iso_month();
-  } else {
-    DCHECK(IsJSTemporalPlainYearMonth(*temporal_date_like));
-    year =
-        Handle<JSTemporalPlainYearMonth>::cast(temporal_date_like)->iso_year();
-    month =
-        Handle<JSTemporalPlainYearMonth>::cast(temporal_date_like)->iso_month();
   }
   return handle(Smi::FromInt(ISODaysInMonth(isolate, year, month)), isolate);
 }
@@ -10277,10 +9863,9 @@ MaybeHandle<Smi> JSTemporalCalendar::Year(Isolate* isolate,
   // [[InitializedTemporalCalendar]]).
   // 3. Assert: calendar.[[Identifier]] is "iso8601".
   // 4. If Type(temporalDateLike) is not Object or temporalDateLike does not
-  // have an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]],
-  // or [[InitializedTemporalYearMonth]]
+  // have an [[InitializedTemporalDate]] or [[InitializedTemporalDateTime]]
   // internal slot, then
-  if (!IsPlainDatePlainDateTimeOrPlainYearMonth(temporal_date_like)) {
+  if (!IsPlainDateOrPlainDateTime(temporal_date_like)) {
     // a. Set temporalDateLike to ? ToTemporalDate(temporalDateLike).
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, temporal_date_like,
@@ -10293,13 +9878,10 @@ MaybeHandle<Smi> JSTemporalCalendar::Year(Isolate* isolate,
   int32_t year;
   if (IsJSTemporalPlainDate(*temporal_date_like)) {
     year = Handle<JSTemporalPlainDate>::cast(temporal_date_like)->iso_year();
-  } else if (IsJSTemporalPlainDateTime(*temporal_date_like)) {
+  } else {
+    DCHECK(IsJSTemporalPlainDateTime(*temporal_date_like));
     year =
         Handle<JSTemporalPlainDateTime>::cast(temporal_date_like)->iso_year();
-  } else {
-    DCHECK(IsJSTemporalPlainYearMonth(*temporal_date_like));
-    year =
-        Handle<JSTemporalPlainYearMonth>::cast(temporal_date_like)->iso_year();
   }
 
   // 6. Return 𝔽(year).
@@ -10361,9 +9943,9 @@ MaybeHandle<Smi> JSTemporalCalendar::MonthsInYear(
   // [[InitializedTemporalCalendar]]).
   // 3. Assert: calendar.[[Identifier]] is "iso8601".
   // 4. If Type(temporalDateLike) is not Object or temporalDateLike does not
-  // have an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]], or
-  // [[InitializedTemporalYearMonth]] internal slot, then
-  if (!IsPlainDatePlainDateTimeOrPlainYearMonth(temporal_date_like)) {
+  // have an [[InitializedTemporalDate]] or [[InitializedTemporalDateTime]]
+  // internal slot, then
+  if (!IsPlainDateOrPlainDateTime(temporal_date_like)) {
     // a. Set temporalDateLike to ? ToTemporalDate(temporalDateLike).
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, temporal_date_like,
@@ -10387,9 +9969,9 @@ MaybeHandle<Oddball> JSTemporalCalendar::InLeapYear(
   // [[InitializedTemporalCalendar]]).
   // 3. Assert: calendar.[[Identifier]] is "iso8601".
   // 4. If Type(temporalDateLike) is not Object or temporalDateLike does not
-  // have an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]], or
-  // [[InitializedTemporalYearMonth]] internal slot, then
-  if (!IsPlainDatePlainDateTimeOrPlainYearMonth(temporal_date_like)) {
+  // have an [[InitializedTemporalDate]] or [[InitializedTemporalDateTime]]
+  // internal slot, then
+  if (!IsPlainDateOrPlainDateTime(temporal_date_like)) {
     // a. Set temporalDateLike to ? ToTemporalDate(temporalDateLike).
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, temporal_date_like,
@@ -10402,13 +9984,10 @@ MaybeHandle<Oddball> JSTemporalCalendar::InLeapYear(
   int32_t year;
   if (IsJSTemporalPlainDate(*temporal_date_like)) {
     year = Handle<JSTemporalPlainDate>::cast(temporal_date_like)->iso_year();
-  } else if (IsJSTemporalPlainDateTime(*temporal_date_like)) {
+  } else {
+    DCHECK(IsJSTemporalPlainDateTime(*temporal_date_like));
     year =
         Handle<JSTemporalPlainDateTime>::cast(temporal_date_like)->iso_year();
-  } else {
-    DCHECK(IsJSTemporalPlainYearMonth(*temporal_date_like));
-    year =
-        Handle<JSTemporalPlainYearMonth>::cast(temporal_date_like)->iso_year();
   }
   return isolate->factory()->ToBoolean(IsISOLeapYear(isolate, year));
 }
@@ -10567,11 +10146,9 @@ MaybeHandle<Smi> JSTemporalCalendar::Day(Isolate* isolate,
   // [[InitializedTemporalCalendar]]).
   // 3. Assert: calendar.[[Identifier]] is "iso8601".
   // 4. If Type(temporalDateLike) is not Object or temporalDateLike does not
-  // have an [[InitializedTemporalDate]] or [[InitializedTemporalMonthDay]]
-  // internal slot, then
+  // have an [[InitializedTemporalDate]] internal slot, then
   if (!(IsJSTemporalPlainDate(*temporal_date_like) ||
-        IsJSTemporalPlainDateTime(*temporal_date_like) ||
-        IsJSTemporalPlainMonthDay(*temporal_date_like))) {
+        IsJSTemporalPlainDateTime(*temporal_date_like))) {
     // a. Set temporalDateLike to ? ToTemporalDate(temporalDateLike).
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, temporal_date_like,
@@ -10584,11 +10161,9 @@ MaybeHandle<Smi> JSTemporalCalendar::Day(Isolate* isolate,
   int32_t day;
   if (IsJSTemporalPlainDate(*temporal_date_like)) {
     day = Handle<JSTemporalPlainDate>::cast(temporal_date_like)->iso_day();
-  } else if (IsJSTemporalPlainDateTime(*temporal_date_like)) {
-    day = Handle<JSTemporalPlainDateTime>::cast(temporal_date_like)->iso_day();
   } else {
-    DCHECK(IsJSTemporalPlainMonthDay(*temporal_date_like));
-    day = Handle<JSTemporalPlainMonthDay>::cast(temporal_date_like)->iso_day();
+    DCHECK(IsJSTemporalPlainDateTime(*temporal_date_like));
+    day = Handle<JSTemporalPlainDateTime>::cast(temporal_date_like)->iso_day();
   }
 
   // 6. Return 𝔽(day).
@@ -10604,11 +10179,9 @@ MaybeHandle<String> JSTemporalCalendar::MonthCode(
   // [[InitializedTemporalCalendar]]).
   // 3. Assert: calendar.[[Identifier]] is "iso8601".
   // 4. If Type(temporalDateLike) is not Object or temporalDateLike does not
-  // have an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]],
-  // [[InitializedTemporalMonthDay]], or
-  // [[InitializedTemporalYearMonth]] internal slot, then
-  if (!(IsPlainDatePlainDateTimeOrPlainYearMonth(temporal_date_like) ||
-        IsJSTemporalPlainMonthDay(*temporal_date_like))) {
+  // have an [[InitializedTemporalDate]] or [[InitializedTemporalDateTime]]
+  // internal slot, then
+  if (!IsPlainDateOrPlainDateTime(temporal_date_like)) {
     // a. Set temporalDateLike to ? ToTemporalDate(temporalDateLike).
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, temporal_date_like,
@@ -10621,16 +10194,10 @@ MaybeHandle<String> JSTemporalCalendar::MonthCode(
   int32_t month;
   if (IsJSTemporalPlainDate(*temporal_date_like)) {
     month = Handle<JSTemporalPlainDate>::cast(temporal_date_like)->iso_month();
-  } else if (IsJSTemporalPlainDateTime(*temporal_date_like)) {
+  } else {
+    DCHECK(IsJSTemporalPlainDateTime(*temporal_date_like));
     month =
         Handle<JSTemporalPlainDateTime>::cast(temporal_date_like)->iso_month();
-  } else if (IsJSTemporalPlainMonthDay(*temporal_date_like)) {
-    month =
-        Handle<JSTemporalPlainMonthDay>::cast(temporal_date_like)->iso_month();
-  } else {
-    DCHECK(IsJSTemporalPlainYearMonth(*temporal_date_like));
-    month =
-        Handle<JSTemporalPlainYearMonth>::cast(temporal_date_like)->iso_month();
   }
   IncrementalStringBuilder builder(isolate);
   builder.AppendCharacter('M');
@@ -10646,17 +10213,10 @@ MaybeHandle<String> JSTemporalCalendar::MonthCode(
 MaybeHandle<Smi> JSTemporalCalendar::Month(Isolate* isolate,
                                            Handle<JSTemporalCalendar> calendar,
                                            Handle<Object> temporal_date_like) {
-  // 4. If Type(temporalDateLike) is Object and temporalDateLike has an
-  // [[InitializedTemporalMonthDay]] internal slot, then
-  if (IsJSTemporalPlainMonthDay(*temporal_date_like)) {
-    // a. Throw a TypeError exception.
-    THROW_NEW_ERROR(isolate, NEW_TEMPORAL_INVALID_ARG_TYPE_ERROR(), Smi);
-  }
   // 5. If Type(temporalDateLike) is not Object or temporalDateLike does not
-  // have an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]],
-  // or [[InitializedTemporalYearMonth]]
+  // have an [[InitializedTemporalDate]] or [[InitializedTemporalDateTime]]
   // internal slot, then
-  if (!IsPlainDatePlainDateTimeOrPlainYearMonth(temporal_date_like)) {
+  if (!IsPlainDateOrPlainDateTime(temporal_date_like)) {
     // a. Set temporalDateLike to ? ToTemporalDate(temporalDateLike).
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, temporal_date_like,
@@ -10669,95 +10229,14 @@ MaybeHandle<Smi> JSTemporalCalendar::Month(Isolate* isolate,
   int32_t month;
   if (IsJSTemporalPlainDate(*temporal_date_like)) {
     month = Handle<JSTemporalPlainDate>::cast(temporal_date_like)->iso_month();
-  } else if (IsJSTemporalPlainDateTime(*temporal_date_like)) {
+  } else {
+    DCHECK(IsJSTemporalPlainDateTime(*temporal_date_like));
     month =
         Handle<JSTemporalPlainDateTime>::cast(temporal_date_like)->iso_month();
-  } else {
-    DCHECK(IsJSTemporalPlainYearMonth(*temporal_date_like));
-    month =
-        Handle<JSTemporalPlainYearMonth>::cast(temporal_date_like)->iso_month();
   }
 
   // 7. Return 𝔽(month).
   return handle(Smi::FromInt(month), isolate);
-}
-
-// #sec-temporal.calendar.prototype.monthdayfromfields
-MaybeHandle<JSTemporalPlainMonthDay> JSTemporalCalendar::MonthDayFromFields(
-    Isolate* isolate, Handle<JSTemporalCalendar> calendar,
-    Handle<Object> fields_obj, Handle<Object> options_obj) {
-  // 1. Let calendar be the this value.
-  // 2. Perform ? RequireInternalSlot(calendar,
-  // [[InitializedTemporalCalendar]]).
-  // 3. Assert: calendar.[[Identifier]] is "iso8601".
-  const char* method_name = "Temporal.Calendar.prototype.monthDayFromFields";
-  // 4. If Type(fields) is not Object, throw a TypeError exception.
-  if (!IsJSReceiver(*fields_obj)) {
-    THROW_NEW_ERROR(isolate,
-                    NewTypeError(MessageTemplate::kCalledOnNonObject,
-                                 isolate->factory()->NewStringFromAsciiChecked(
-                                     method_name)),
-                    JSTemporalPlainMonthDay);
-  }
-  Handle<JSReceiver> fields = Handle<JSReceiver>::cast(fields_obj);
-  // 5. Set options to ? GetOptionsObject(options).
-  Handle<JSReceiver> options;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, options, GetOptionsObject(isolate, options_obj, method_name),
-      JSTemporalPlainMonthDay);
-  // 6. Let result be ? ISOMonthDayFromFields(fields, options).
-  if (calendar->calendar_index() == 0) {
-    DateRecord result;
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, result,
-        ISOMonthDayFromFields(isolate, fields, options, method_name),
-        Handle<JSTemporalPlainMonthDay>());
-    // 7. Return ? CreateTemporalMonthDay(result.[[Month]], result.[[Day]],
-    // calendar, result.[[ReferenceISOYear]]).
-    return CreateTemporalMonthDay(isolate, result.month, result.day, calendar,
-                                  result.year);
-  }
-  // TODO(ftang) add intl code inside #ifdef V8_INTL_SUPPORT
-  UNREACHABLE();
-}
-
-// #sec-temporal.calendar.prototype.yearmonthfromfields
-MaybeHandle<JSTemporalPlainYearMonth> JSTemporalCalendar::YearMonthFromFields(
-    Isolate* isolate, Handle<JSTemporalCalendar> calendar,
-    Handle<Object> fields_obj, Handle<Object> options_obj) {
-  // 1. Let calendar be the this value.
-  // 2. Perform ? RequireInternalSlot(calendar,
-  // [[InitializedTemporalCalendar]]).
-  // 3. Assert: calendar.[[Identifier]] is "iso8601".
-  const char* method_name = "Temporal.Calendar.prototype.yearMonthFromFields";
-  // 4. If Type(fields) is not Object, throw a TypeError exception.
-  if (!IsJSReceiver(*fields_obj)) {
-    THROW_NEW_ERROR(isolate,
-                    NewTypeError(MessageTemplate::kCalledOnNonObject,
-                                 isolate->factory()->NewStringFromAsciiChecked(
-                                     method_name)),
-                    JSTemporalPlainYearMonth);
-  }
-  Handle<JSReceiver> fields = Handle<JSReceiver>::cast(fields_obj);
-  // 5. Set options to ? GetOptionsObject(options).
-  Handle<JSReceiver> options;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, options, GetOptionsObject(isolate, options_obj, method_name),
-      JSTemporalPlainYearMonth);
-  // 6. Let result be ? ISOYearMonthFromFields(fields, options).
-  if (calendar->calendar_index() == 0) {
-    DateRecord result;
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, result,
-        ISOYearMonthFromFields(isolate, fields, options, method_name),
-        Handle<JSTemporalPlainYearMonth>());
-    // 7. Return ? CreateTemporalYearMonth(result.[[Year]], result.[[Month]],
-    // calendar, result.[[ReferenceISODay]]).
-    return CreateTemporalYearMonth(isolate, result.year, result.month, calendar,
-                                   result.day);
-  }
-  // TODO(ftang) add intl code inside #ifdef V8_INTL_SUPPORT
-  UNREACHABLE();
 }
 
 #ifdef V8_INTL_SUPPORT
@@ -10769,10 +10248,9 @@ MaybeHandle<Object> JSTemporalCalendar::Era(Isolate* isolate,
   // 2. Perform ? RequireInternalSlot(calendar,
   // [[InitializedTemporalCalendar]]).
   // 3. If Type(temporalDateLike) is not Object or temporalDateLike does not
-  // have an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]],
-  // or [[InitializedTemporalYearMonth]]
+  // have an [[InitializedTemporalDate]] or[[InitializedTemporalDateTime]]
   // internal slot, then
-  if (!IsPlainDatePlainDateTimeOrPlainYearMonth(temporal_date_like)) {
+  if (!IsPlainDateOrPlainDateTime(temporal_date_like)) {
     // a. Set temporalDateLike to ? ToTemporalDate(temporalDateLike).
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, temporal_date_like,
@@ -10798,10 +10276,9 @@ MaybeHandle<Object> JSTemporalCalendar::EraYear(
   // 2. Perform ? RequireInternalSlot(calendar,
   // [[InitializedTemporalCalendar]]).
   // 3. If Type(temporalDateLike) is not Object or temporalDateLike does not
-  // have an [[InitializedTemporalDate]], [[InitializedTemporalDateTime]],
-  // or [[InitializedTemporalYearMonth]]
+  // have an [[InitializedTemporalDate]] or [[InitializedTemporalDateTime]]
   // internal slot, then
-  if (!IsPlainDatePlainDateTimeOrPlainYearMonth(temporal_date_like)) {
+  if (!IsPlainDateOrPlainDateTime(temporal_date_like)) {
     // a. Set temporalDateLike to ? ToTemporalDate(temporalDateLike).
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, temporal_date_like,
@@ -11441,56 +10918,6 @@ MaybeHandle<JSTemporalPlainDate> JSTemporalPlainDate::WithCalendar(
       calendar);
 }
 
-// Template for common code shared by
-// Temporal.PlainDate(Timne)?.prototype.toPlain(YearMonth|MonthDay)
-// #sec-temporal.plaindate.prototype.toplainmonthday
-// #sec-temporal.plaindate.prototype.toplainyearmonth
-// #sec-temporal.plaindatetime.prototype.toplainmonthday
-// #sec-temporal.plaindatetime.prototype.toplainyearmonth
-template <typename T, typename R,
-          MaybeHandle<R> (*from_fields)(Isolate*, Handle<JSReceiver>,
-                                        Handle<JSReceiver>, Handle<Object>)>
-MaybeHandle<R> ToPlain(Isolate* isolate, Handle<T> t, Handle<String> f1,
-                       Handle<String> f2) {
-  Factory* factory = isolate->factory();
-  // 1. Let temporalDate be the this value.
-  // 2. Perform ? RequireInternalSlot(t, [[InitializedTemporalDate]]).
-  // 3. Let calendar be t.[[Calendar]].
-  Handle<JSReceiver> calendar(t->calendar(), isolate);
-  // 4. Let fieldNames be ? CalendarFields(calendar, « f1 , f2 »).
-  Handle<FixedArray> field_names = factory->NewFixedArray(2);
-  field_names->set(0, *f1);
-  field_names->set(1, *f2);
-  ASSIGN_RETURN_ON_EXCEPTION(isolate, field_names,
-                             CalendarFields(isolate, calendar, field_names), R);
-  // 5. Let fields be ? PrepareTemporalFields(t, fieldNames, «»).
-  Handle<JSReceiver> fields;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, fields,
-      PrepareTemporalFields(isolate, t, field_names, RequiredFields::kNone), R);
-  // 6. Return ? FromFields(calendar, fields).
-  return from_fields(isolate, calendar, fields,
-                     isolate->factory()->undefined_value());
-}
-
-// #sec-temporal.plaindate.prototype.toplainyearmonth
-MaybeHandle<JSTemporalPlainYearMonth> JSTemporalPlainDate::ToPlainYearMonth(
-    Isolate* isolate, Handle<JSTemporalPlainDate> temporal_date) {
-  return ToPlain<JSTemporalPlainDate, JSTemporalPlainYearMonth,
-                 YearMonthFromFields>(isolate, temporal_date,
-                                      isolate->factory()->monthCode_string(),
-                                      isolate->factory()->year_string());
-}
-
-// #sec-temporal.plaindate.prototype.toplainmonthday
-MaybeHandle<JSTemporalPlainMonthDay> JSTemporalPlainDate::ToPlainMonthDay(
-    Isolate* isolate, Handle<JSTemporalPlainDate> temporal_date) {
-  return ToPlain<JSTemporalPlainDate, JSTemporalPlainMonthDay,
-                 MonthDayFromFields>(isolate, temporal_date,
-                                     isolate->factory()->day_string(),
-                                     isolate->factory()->monthCode_string());
-}
-
 // #sec-temporal.plaindate.prototype.toplaindatetime
 MaybeHandle<JSTemporalPlainDateTime> JSTemporalPlainDate::ToPlainDateTime(
     Isolate* isolate, Handle<JSTemporalPlainDate> temporal_date,
@@ -11543,13 +10970,10 @@ Maybe<bool> RejectObjectWithCalendarOrTimeZone(Isolate* isolate,
   Factory* factory = isolate->factory();
   // 1. Assert: Type(object) is Object.
   // 2. If object has an [[InitializedTemporalDate]],
-  // [[InitializedTemporalDateTime]], [[InitializedTemporalMonthDay]],
-  // [[InitializedTemporalTime]], [[InitializedTemporalYearMonth]], or
+  // [[InitializedTemporalDateTime]], [[InitializedTemporalTime]], or
   // [[InitializedTemporalZonedDateTime]] internal slot, then
   if (IsJSTemporalPlainDate(*object) || IsJSTemporalPlainDateTime(*object) ||
-      IsJSTemporalPlainMonthDay(*object) || IsJSTemporalPlainTime(*object) ||
-      IsJSTemporalPlainYearMonth(*object) ||
-      IsJSTemporalZonedDateTime(*object)) {
+      IsJSTemporalPlainTime(*object) || IsJSTemporalZonedDateTime(*object)) {
     // a. Throw a TypeError exception.
     THROW_NEW_ERROR_RETURN_VALUE(isolate, NEW_TEMPORAL_INVALID_ARG_TYPE_ERROR(),
                                  Nothing<bool>());
@@ -11611,77 +11035,69 @@ MaybeHandle<JSReceiver> CalendarMergeFields(
   return Handle<JSReceiver>::cast(result);
 }
 
-// Common code shared by Temporal.Plain(Date|YearMonth|MonthDay).prototype.with
-template <typename T,
-          MaybeHandle<T> (*from_fields_func)(
-              Isolate*, Handle<JSReceiver>, Handle<JSReceiver>, Handle<Object>)>
-MaybeHandle<T> PlainDateOrYearMonthOrMonthDayWith(
-    Isolate* isolate, Handle<T> temporal, Handle<Object> temporal_like_obj,
-    Handle<Object> options_obj, Handle<FixedArray> field_names,
-    const char* method_name) {
-  // 1. Let temporalDate be the this value.
-  // 2. Perform ? RequireInternalSlot(temporalDate,
-  // [[InitializedTemporalXXX]]).
-  // 3. If Type(temporalXXXLike) is not Object, then
-  if (!IsJSReceiver(*temporal_like_obj)) {
-    // a. Throw a TypeError exception.
-    THROW_NEW_ERROR(isolate, NEW_TEMPORAL_INVALID_ARG_TYPE_ERROR(), T);
-  }
-  Handle<JSReceiver> temporal_like =
-      Handle<JSReceiver>::cast(temporal_like_obj);
-  // 4. Perform ? RejectObjectWithCalendarOrTimeZone(temporalXXXLike).
-  MAYBE_RETURN(RejectObjectWithCalendarOrTimeZone(isolate, temporal_like),
-               Handle<T>());
-
-  // 5. Let calendar be temporalXXX.[[Calendar]].
-  Handle<JSReceiver> calendar(temporal->calendar(), isolate);
-
-  // 6. Let fieldNames be ? CalendarFields(calendar, fieldNames).
-  ASSIGN_RETURN_ON_EXCEPTION(isolate, field_names,
-                             CalendarFields(isolate, calendar, field_names), T);
-  // 7. Let partialDate be ? PreparePartialTemporalFields(temporalXXXLike,
-  // fieldNames).
-  Handle<JSReceiver> partial_date;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, partial_date,
-      PreparePartialTemporalFields(isolate, temporal_like, field_names), T);
-  // 8. Set options to ? GetOptionsObject(options).
-  Handle<JSReceiver> options;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, options, GetOptionsObject(isolate, options_obj, method_name), T);
-  // 9. Let fields be ? PrepareTemporalFields(temporalXXX, fieldNames, «»).
-  Handle<JSReceiver> fields;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, fields,
-      PrepareTemporalFields(isolate, temporal, field_names,
-                            RequiredFields::kNone),
-      T);
-  // 10. Set fields to ? CalendarMergeFields(calendar, fields, partialDate).
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, fields,
-      CalendarMergeFields(isolate, calendar, fields, partial_date), T);
-  // 11. Set fields to ? PrepareTemporalFields(fields, fieldNames, «»).
-  ASSIGN_RETURN_ON_EXCEPTION(isolate, fields,
-                             PrepareTemporalFields(isolate, fields, field_names,
-                                                   RequiredFields::kNone),
-                             T);
-  // 12. Return ? XxxFromFields(calendar, fields, options).
-  return from_fields_func(isolate, calendar, fields, options);
-}
-
 }  // namespace
 
 // #sec-temporal.plaindate.prototype.with
 MaybeHandle<JSTemporalPlainDate> JSTemporalPlainDate::With(
     Isolate* isolate, Handle<JSTemporalPlainDate> temporal_date,
     Handle<Object> temporal_date_like_obj, Handle<Object> options_obj) {
+  // 1. Let temporalDate be the this value.
+  // 2. Perform ? RequireInternalSlot(temporalDate,
+  // [[InitializedTemporalDate]]).
+  // 3. If Type(temporalDateLike) is not Object, then
+  if (!IsJSReceiver(*temporal_date_like_obj)) {
+    // a. Throw a TypeError exception.
+    THROW_NEW_ERROR(isolate, NEW_TEMPORAL_INVALID_ARG_TYPE_ERROR(),
+                    JSTemporalPlainDate);
+  }
+  Handle<JSReceiver> temporal_like =
+      Handle<JSReceiver>::cast(temporal_date_like_obj);
+  // 4. Perform ? RejectObjectWithCalendarOrTimeZone(temporalDateLike).
+  MAYBE_RETURN(RejectObjectWithCalendarOrTimeZone(isolate, temporal_like),
+               Handle<JSTemporalPlainDate>());
+
+  // 5. Let calendar be temporalDate.[[Calendar]].
+  Handle<JSReceiver> calendar(temporal_date->calendar(), isolate);
+
   // 6. Let fieldNames be ? CalendarFields(calendar, « "day", "month",
   // "monthCode", "year" »).
   Handle<FixedArray> field_names = DayMonthMonthCodeYearInFixedArray(isolate);
-  return PlainDateOrYearMonthOrMonthDayWith<JSTemporalPlainDate,
-                                            DateFromFields>(
-      isolate, temporal_date, temporal_date_like_obj, options_obj, field_names,
-      "Temporal.PlainDate.prototype.with");
+  ASSIGN_RETURN_ON_EXCEPTION(isolate, field_names,
+                             CalendarFields(isolate, calendar, field_names),
+                             JSTemporalPlainDate);
+  // 7. Let partialDate be ? PreparePartialTemporalFields(temporalDateLike,
+  // fieldNames).
+  Handle<JSReceiver> partial_date;
+  ASSIGN_RETURN_ON_EXCEPTION(
+      isolate, partial_date,
+      PreparePartialTemporalFields(isolate, temporal_like, field_names),
+      JSTemporalPlainDate);
+  // 8. Set options to ? GetOptionsObject(options).
+  Handle<JSReceiver> options;
+  ASSIGN_RETURN_ON_EXCEPTION(
+      isolate, options,
+      GetOptionsObject(isolate, options_obj,
+                       "Temporal.PlainDate.prototype.with"),
+      JSTemporalPlainDate);
+  // 9. Let fields be ? PrepareTemporalFields(temporalDate, fieldNames, «»).
+  Handle<JSReceiver> fields;
+  ASSIGN_RETURN_ON_EXCEPTION(
+      isolate, fields,
+      PrepareTemporalFields(isolate, temporal_date, field_names,
+                            RequiredFields::kNone),
+      JSTemporalPlainDate);
+  // 10. Set fields to ? CalendarMergeFields(calendar, fields, partialDate).
+  ASSIGN_RETURN_ON_EXCEPTION(
+      isolate, fields,
+      CalendarMergeFields(isolate, calendar, fields, partial_date),
+      JSTemporalPlainDate);
+  // 11. Set fields to ? PrepareTemporalFields(fields, fieldNames, «»).
+  ASSIGN_RETURN_ON_EXCEPTION(isolate, fields,
+                             PrepareTemporalFields(isolate, fields, field_names,
+                                                   RequiredFields::kNone),
+                             JSTemporalPlainDate);
+  // 12. Return ? CalendarDateFromFields(calendar, fields, options).
+  return DateFromFields(isolate, calendar, fields, options);
 }
 
 // #sec-temporal.plaindate.prototype.tozoneddatetime
@@ -12659,24 +12075,6 @@ MaybeHandle<JSTemporalPlainDateTime> JSTemporalPlainDateTime::WithCalendar(
       calendar);
 }
 
-// #sec-temporal.plaindatetime.prototype.toplainyearmonth
-MaybeHandle<JSTemporalPlainYearMonth> JSTemporalPlainDateTime::ToPlainYearMonth(
-    Isolate* isolate, Handle<JSTemporalPlainDateTime> date_time) {
-  return ToPlain<JSTemporalPlainDateTime, JSTemporalPlainYearMonth,
-                 YearMonthFromFields>(isolate, date_time,
-                                      isolate->factory()->monthCode_string(),
-                                      isolate->factory()->year_string());
-}
-
-// #sec-temporal.plaindatetime.prototype.toplainmonthday
-MaybeHandle<JSTemporalPlainMonthDay> JSTemporalPlainDateTime::ToPlainMonthDay(
-    Isolate* isolate, Handle<JSTemporalPlainDateTime> date_time) {
-  return ToPlain<JSTemporalPlainDateTime, JSTemporalPlainMonthDay,
-                 MonthDayFromFields>(isolate, date_time,
-                                     isolate->factory()->day_string(),
-                                     isolate->factory()->monthCode_string());
-}
-
 // #sec-temporal.plaindatetime.prototype.tozoneddatetime
 MaybeHandle<JSTemporalZonedDateTime> JSTemporalPlainDateTime::ToZonedDateTime(
     Isolate* isolate, Handle<JSTemporalPlainDateTime> date_time,
@@ -13404,1145 +12802,6 @@ MaybeHandle<JSTemporalPlainTime> JSTemporalPlainDateTime::ToPlainTime(
       isolate, {date_time->iso_hour(), date_time->iso_minute(),
                 date_time->iso_second(), date_time->iso_millisecond(),
                 date_time->iso_microsecond(), date_time->iso_nanosecond()});
-}
-
-// #sec-temporal.plainmonthday
-MaybeHandle<JSTemporalPlainMonthDay> JSTemporalPlainMonthDay::Constructor(
-    Isolate* isolate, Handle<JSFunction> target, Handle<HeapObject> new_target,
-    Handle<Object> iso_month_obj, Handle<Object> iso_day_obj,
-    Handle<Object> calendar_like, Handle<Object> reference_iso_year_obj) {
-  const char* method_name = "Temporal.PlainMonthDay";
-  // 1. If NewTarget is undefined, throw a TypeError exception.
-  if (IsUndefined(*new_target)) {
-    THROW_NEW_ERROR(isolate,
-                    NewTypeError(MessageTemplate::kMethodInvokedOnWrongType,
-                                 isolate->factory()->NewStringFromAsciiChecked(
-                                     method_name)),
-                    JSTemporalPlainMonthDay);
-  }
-
-  // 3. Let m be ? ToIntegerThrowOnInfinity(isoMonth).
-  TO_INT_THROW_ON_INFTY(iso_month, JSTemporalPlainMonthDay);
-  // 5. Let d be ? ToIntegerThrowOnInfinity(isoDay).
-  TO_INT_THROW_ON_INFTY(iso_day, JSTemporalPlainMonthDay);
-  // 7. Let calendar be ? ToTemporalCalendarWithISODefault(calendarLike).
-  Handle<JSReceiver> calendar;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, calendar,
-      ToTemporalCalendarWithISODefault(isolate, calendar_like, method_name),
-      JSTemporalPlainMonthDay);
-
-  // 2. If referenceISOYear is undefined, then
-  // a. Set referenceISOYear to 1972𝔽.
-  // ...
-  // 8. Let ref be ? ToIntegerThrowOnInfinity(referenceISOYear).
-  int32_t ref = 1972;
-  if (!IsUndefined(*reference_iso_year_obj)) {
-    TO_INT_THROW_ON_INFTY(reference_iso_year, JSTemporalPlainMonthDay);
-    ref = reference_iso_year;
-  }
-
-  // 10. Return ? CreateTemporalMonthDay(y, m, calendar, ref, NewTarget).
-  return CreateTemporalMonthDay(isolate, target, new_target, iso_month, iso_day,
-                                calendar, ref);
-}
-
-namespace {
-
-// #sec-temporal-parsetemporalmonthdaystring
-Maybe<DateRecordWithCalendar> ParseTemporalMonthDayString(
-    Isolate* isolate, Handle<String> iso_string) {
-  TEMPORAL_ENTER_FUNC();
-
-  // 1. Assert: Type(isoString) is String.
-  // 2. If isoString does not satisfy the syntax of a TemporalMonthDayString
-  // (see 13.33), then
-  base::Optional<ParsedISO8601Result> parsed =
-      TemporalParser::ParseTemporalMonthDayString(isolate, iso_string);
-  if (!parsed.has_value()) {
-    // a. Throw a *RangeError* exception.
-    THROW_NEW_ERROR_RETURN_VALUE(isolate,
-                                 NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
-                                 Nothing<DateRecordWithCalendar>());
-  }
-  // 3. If isoString contains a UTCDesignator, then
-  if (parsed->utc_designator) {
-    // a. Throw a *RangeError* exception.
-    THROW_NEW_ERROR_RETURN_VALUE(isolate,
-                                 NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
-                                 Nothing<DateRecordWithCalendar>());
-  }
-
-  // 3. Let result be ? ParseISODateTime(isoString).
-  DateTimeRecordWithCalendar result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, result, ParseISODateTime(isolate, iso_string, *parsed),
-      Nothing<DateRecordWithCalendar>());
-  // 5. Let year be result.[[Year]].
-  // 6. If no part of isoString is produced by the DateYear production, then
-  // a. Set year to undefined.
-
-  // 7. Return the Record { [[Year]]: year, [[Month]]: result.[[Month]],
-  // [[Day]]: result.[[Day]], [[Calendar]]: result.[[Calendar]] }.
-  DateRecordWithCalendar ret({result.date, result.calendar});
-  return Just(ret);
-}
-
-// #sec-temporal-totemporalmonthday
-MaybeHandle<JSTemporalPlainMonthDay> ToTemporalMonthDay(
-    Isolate* isolate, Handle<Object> item_obj, Handle<Object> options,
-    const char* method_name) {
-  TEMPORAL_ENTER_FUNC();
-
-  Factory* factory = isolate->factory();
-  // 2. Assert: Type(options) is Object or Undefined.
-  DCHECK(IsJSReceiver(*options) || IsUndefined(*options));
-
-  // 3. Let referenceISOYear be 1972 (the first leap year after the Unix epoch).
-  constexpr int32_t kReferenceIsoYear = 1972;
-  // 4. If Type(item) is Object, then
-  if (IsJSReceiver(*item_obj)) {
-    Handle<JSReceiver> item = Handle<JSReceiver>::cast(item_obj);
-    // a. If item has an [[InitializedTemporalMonthDay]] internal slot, then
-    // i. Return item.
-    if (IsJSTemporalPlainMonthDay(*item_obj)) {
-      return Handle<JSTemporalPlainMonthDay>::cast(item_obj);
-    }
-    bool calendar_absent = false;
-    // b. If item has an [[InitializedTemporalDate]],
-    // [[InitializedTemporalDateTime]], [[InitializedTemporalTime]],
-    // [[InitializedTemporalYearMonth]], or [[InitializedTemporalZonedDateTime]]
-    // internal slot, then
-    // i. Let calendar be item.[[Calendar]].
-    // ii. Let calendarAbsent be false.
-    Handle<JSReceiver> calendar;
-    if (IsJSTemporalPlainDate(*item_obj)) {
-      calendar = handle(Handle<JSTemporalPlainDate>::cast(item_obj)->calendar(),
-                        isolate);
-    } else if (IsJSTemporalPlainDateTime(*item_obj)) {
-      calendar = handle(
-          Handle<JSTemporalPlainDateTime>::cast(item_obj)->calendar(), isolate);
-    } else if (IsJSTemporalPlainTime(*item_obj)) {
-      calendar = handle(Handle<JSTemporalPlainTime>::cast(item_obj)->calendar(),
-                        isolate);
-    } else if (IsJSTemporalPlainYearMonth(*item_obj)) {
-      calendar =
-          handle(Handle<JSTemporalPlainYearMonth>::cast(item_obj)->calendar(),
-                 isolate);
-    } else if (IsJSTemporalZonedDateTime(*item_obj)) {
-      calendar = handle(
-          Handle<JSTemporalZonedDateTime>::cast(item_obj)->calendar(), isolate);
-      // c. Else,
-    } else {
-      // i. Let calendar be ? Get(item, "calendar").
-      Handle<Object> calendar_obj;
-      ASSIGN_RETURN_ON_EXCEPTION(
-          isolate, calendar_obj,
-          JSReceiver::GetProperty(isolate, item, factory->calendar_string()),
-          JSTemporalPlainMonthDay);
-      // ii. If calendar is undefined, then
-      if (IsUndefined(*calendar_obj)) {
-        // 1. Let calendarAbsent be true.
-        calendar_absent = true;
-      }
-      // iv. Set calendar to ? ToTemporalCalendarWithISODefault(calendar).
-      ASSIGN_RETURN_ON_EXCEPTION(
-          isolate, calendar,
-          ToTemporalCalendarWithISODefault(isolate, calendar_obj, method_name),
-          JSTemporalPlainMonthDay);
-    }
-    // d. Let fieldNames be ? CalendarFields(calendar, « "day", "month",
-    // "monthCode", "year" »).
-    Handle<FixedArray> field_names = DayMonthMonthCodeYearInFixedArray(isolate);
-    ASSIGN_RETURN_ON_EXCEPTION(isolate, field_names,
-                               CalendarFields(isolate, calendar, field_names),
-                               JSTemporalPlainMonthDay);
-    // e. Let fields be ? PrepareTemporalFields(item, fieldNames, «»).
-    Handle<JSReceiver> fields;
-    ASSIGN_RETURN_ON_EXCEPTION(isolate, fields,
-                               PrepareTemporalFields(isolate, item, field_names,
-                                                     RequiredFields::kNone),
-                               JSTemporalPlainMonthDay);
-    // f. Let month be ? Get(fields, "month").
-    Handle<Object> month;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, month,
-        JSReceiver::GetProperty(isolate, fields, factory->month_string()),
-        Handle<JSTemporalPlainMonthDay>());
-    // g. Let monthCode be ? Get(fields, "monthCode").
-    Handle<Object> month_code;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, month_code,
-        JSReceiver::GetProperty(isolate, fields, factory->monthCode_string()),
-        Handle<JSTemporalPlainMonthDay>());
-    // h. Let year be ? Get(fields, "year").
-    Handle<Object> year;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, year,
-        JSReceiver::GetProperty(isolate, fields, factory->year_string()),
-        Handle<JSTemporalPlainMonthDay>());
-    // i. If calendarAbsent is true, and month is not undefined, and monthCode
-    // is undefined and year is undefined, then
-    if (calendar_absent && !IsUndefined(*month) && IsUndefined(*month_code) &&
-        IsUndefined(*year)) {
-      // i. Perform ! CreateDataPropertyOrThrow(fields, "year",
-      // 𝔽(referenceISOYear)).
-      CHECK(JSReceiver::CreateDataProperty(
-                isolate, fields, factory->year_string(),
-                handle(Smi::FromInt(kReferenceIsoYear), isolate),
-                Just(kThrowOnError))
-                .FromJust());
-    }
-    // j. Return ? MonthDayFromFields(calendar, fields, options).
-    return MonthDayFromFields(isolate, calendar, fields, options);
-  }
-  // 5. Perform ? ToTemporalOverflow(options).
-  MAYBE_RETURN_ON_EXCEPTION_VALUE(
-      isolate, ToTemporalOverflow(isolate, options, method_name),
-      Handle<JSTemporalPlainMonthDay>());
-
-  // 6. Let string be ? ToString(item).
-  Handle<String> string;
-  ASSIGN_RETURN_ON_EXCEPTION(isolate, string,
-                             Object::ToString(isolate, item_obj),
-                             JSTemporalPlainMonthDay);
-
-  // 7. Let result be ? ParseTemporalMonthDayString(string).
-  DateRecordWithCalendar result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, result, ParseTemporalMonthDayString(isolate, string),
-      Handle<JSTemporalPlainMonthDay>());
-
-  // 8. Let calendar be ? ToTemporalCalendarWithISODefault(result.[[Calendar]]).
-  Handle<JSReceiver> calendar;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, calendar,
-      ToTemporalCalendarWithISODefault(isolate, result.calendar, method_name),
-      JSTemporalPlainMonthDay);
-
-  // 9. If result.[[Year]] is undefined, then
-  // We use kMintInt31 to represent undefined
-  if (result.date.year == kMinInt31) {
-    // a. Return ? CreateTemporalMonthDay(result.[[Month]], result.[[Day]],
-    // calendar, referenceISOYear).
-    return CreateTemporalMonthDay(isolate, result.date.month, result.date.day,
-                                  calendar, kReferenceIsoYear);
-  }
-
-  Handle<JSTemporalPlainMonthDay> created_result;
-  // 10. Set result to ? CreateTemporalMonthDay(result.[[Month]],
-  // result.[[Day]], calendar, referenceISOYear).
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, created_result,
-      CreateTemporalMonthDay(isolate, result.date.month, result.date.day,
-                             calendar, kReferenceIsoYear),
-      JSTemporalPlainMonthDay);
-  // 11.  NOTE: The following operation is called without options, in order for
-  // the calendar to store a canonical value in the [[ISOYear]] internal slot of
-  // the result.
-  // 12. Return ? CalendarMonthDayFromFields(calendar, result).
-  return MonthDayFromFields(isolate, calendar, created_result);
-}
-
-MaybeHandle<JSTemporalPlainMonthDay> ToTemporalMonthDay(
-    Isolate* isolate, Handle<Object> item_obj, const char* method_name) {
-  // 1. If options is not present, set options to undefined.
-  return ToTemporalMonthDay(isolate, item_obj,
-                            isolate->factory()->undefined_value(), method_name);
-}
-
-}  // namespace
-
-// #sec-temporal.plainmonthday.from
-MaybeHandle<JSTemporalPlainMonthDay> JSTemporalPlainMonthDay::From(
-    Isolate* isolate, Handle<Object> item, Handle<Object> options_obj) {
-  const char* method_name = "Temporal.PlainMonthDay.from";
-  // 1. Set options to ? GetOptionsObject(options).
-  Handle<JSReceiver> options;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, options, GetOptionsObject(isolate, options_obj, method_name),
-      JSTemporalPlainMonthDay);
-  // 2. If Type(item) is Object and item has an [[InitializedTemporalMonthDay]]
-  // internal slot, then
-  if (IsJSTemporalPlainMonthDay(*item)) {
-    // a. Perform ? ToTemporalOverflow(options).
-    MAYBE_RETURN_ON_EXCEPTION_VALUE(
-        isolate, ToTemporalOverflow(isolate, options, method_name),
-        Handle<JSTemporalPlainMonthDay>());
-    // b. Return ? CreateTemporalMonthDay(item.[[ISOMonth]], item.[[ISODay]],
-    // item.[[Calendar]], item.[[ISOYear]]).
-    Handle<JSTemporalPlainMonthDay> month_day =
-        Handle<JSTemporalPlainMonthDay>::cast(item);
-    return CreateTemporalMonthDay(
-        isolate, month_day->iso_month(), month_day->iso_day(),
-        handle(month_day->calendar(), isolate), month_day->iso_year());
-  }
-  // 3. Return ? ToTemporalMonthDay(item, options).
-  return ToTemporalMonthDay(isolate, item, options, method_name);
-}
-
-// #sec-temporal.plainyearmonth.prototype.equals
-MaybeHandle<Oddball> JSTemporalPlainMonthDay::Equals(
-    Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day,
-    Handle<Object> other_obj) {
-  // 1. Let monthDay be the this value.
-  // 2. Perform ? RequireInternalSlot(monthDay,
-  // [[InitializedTemporalMonthDay]]).
-  // 3. Set other to ? ToTemporalMonthDay(other).
-  Handle<JSTemporalPlainMonthDay> other;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, other,
-      ToTemporalMonthDay(isolate, other_obj,
-                         "Temporal.PlainMonthDay.prototype.equals"),
-      Oddball);
-  // 4. If monthDay.[[ISOMonth]] ≠ other.[[ISOMonth]], return false.
-  if (month_day->iso_month() != other->iso_month())
-    return isolate->factory()->false_value();
-  // 5. If monthDay.[[ISODay]] ≠ other.[[ISODay]], return false.
-  if (month_day->iso_day() != other->iso_day())
-    return isolate->factory()->false_value();
-  // 6. If monthDay.[[ISOYear]] ≠ other.[[ISOYear]], return false.
-  if (month_day->iso_year() != other->iso_year())
-    return isolate->factory()->false_value();
-  // 7. Return ? CalendarEquals(monthDay.[[Calendar]], other.[[Calendar]]).
-  return CalendarEquals(isolate,
-                        Handle<JSReceiver>(month_day->calendar(), isolate),
-                        Handle<JSReceiver>(other->calendar(), isolate));
-}
-
-// #sec-temporal.plainmonthday.prototype.with
-MaybeHandle<JSTemporalPlainMonthDay> JSTemporalPlainMonthDay::With(
-    Isolate* isolate, Handle<JSTemporalPlainMonthDay> temporal_month_day,
-    Handle<Object> temporal_month_day_like_obj, Handle<Object> options_obj) {
-  // 6. Let fieldNames be ? CalendarFields(calendar, « "day", "month",
-  // "monthCode", "year" »).
-  Handle<FixedArray> field_names = DayMonthMonthCodeYearInFixedArray(isolate);
-  return PlainDateOrYearMonthOrMonthDayWith<JSTemporalPlainMonthDay,
-                                            MonthDayFromFields>(
-      isolate, temporal_month_day, temporal_month_day_like_obj, options_obj,
-      field_names, "Temporal.PlainMonthDay.prototype.with");
-}
-
-namespace {
-
-// Common code shared by PlainMonthDay and PlainYearMonth.prototype.toPlainDate
-template <typename T>
-MaybeHandle<JSTemporalPlainDate> PlainMonthDayOrYearMonthToPlainDate(
-    Isolate* isolate, Handle<T> temporal, Handle<Object> item_obj,
-    Handle<String> receiver_field_name_1, Handle<String> receiver_field_name_2,
-    Handle<String> input_field_name) {
-  Factory* factory = isolate->factory();
-  // 1. Let monthDay be the this value.
-  // 2. Perform ? RequireInternalSlot(monthDay,
-  // [[InitializedTemporalXXX]]).
-  // 3. If Type(item) is not Object, then
-  if (!IsJSReceiver(*item_obj)) {
-    // a. Throw a TypeError exception.
-    THROW_NEW_ERROR(isolate, NEW_TEMPORAL_INVALID_ARG_TYPE_ERROR(),
-                    JSTemporalPlainDate);
-  }
-  Handle<JSReceiver> item = Handle<JSReceiver>::cast(item_obj);
-  // 4. Let calendar be Xxx.[[Calendar]].
-  Handle<JSReceiver> calendar(temporal->calendar(), isolate);
-  // 5. Let receiverFieldNames be ? CalendarFields(calendar, «
-  // receiverFieldName1, receiverFieldName2 »).
-  Handle<FixedArray> receiver_field_names = factory->NewFixedArray(2);
-  receiver_field_names->set(0, *receiver_field_name_1);
-  receiver_field_names->set(1, *receiver_field_name_2);
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, receiver_field_names,
-      CalendarFields(isolate, calendar, receiver_field_names),
-      JSTemporalPlainDate);
-  // 6. Let fields be ? PrepareTemporalFields(temporal, receiverFieldNames, «»).
-  Handle<JSReceiver> fields;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, fields,
-      PrepareTemporalFields(isolate, temporal, receiver_field_names,
-                            RequiredFields::kNone),
-      JSTemporalPlainDate);
-  // 7. Let inputFieldNames be ? CalendarFields(calendar, « inputFieldName »).
-  Handle<FixedArray> input_field_names = factory->NewFixedArray(1);
-  input_field_names->set(0, *input_field_name);
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, input_field_names,
-      CalendarFields(isolate, calendar, input_field_names),
-      JSTemporalPlainDate);
-  // 8. Let inputFields be ? PrepareTemporalFields(item, inputFieldNames, «»).
-  Handle<JSReceiver> input_fields;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, input_fields,
-      PrepareTemporalFields(isolate, item, input_field_names,
-                            RequiredFields::kNone),
-      JSTemporalPlainDate);
-  // 9. Let mergedFields be ? CalendarMergeFields(calendar, fields,
-  // inputFields).
-  Handle<JSReceiver> merged_fields;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, merged_fields,
-      CalendarMergeFields(isolate, calendar, fields, input_fields),
-      JSTemporalPlainDate);
-  // 10. Let mergedFieldNames be the List containing all the elements of
-  // receiverFieldNames followed by all the elements of inputFieldNames, with
-  // duplicate elements removed.
-  Handle<FixedArray> merged_field_names = factory->NewFixedArray(
-      receiver_field_names->length() + input_field_names->length());
-  Handle<StringSet> added = StringSet::New(isolate);
-  for (int i = 0; i < receiver_field_names->length(); i++) {
-    Handle<Object> item(receiver_field_names->get(i), isolate);
-    DCHECK(IsString(*item));
-    Handle<String> string = Handle<String>::cast(item);
-    if (!added->Has(isolate, string)) {
-      merged_field_names->set(added->NumberOfElements(), *item);
-      added = StringSet::Add(isolate, added, string);
-    }
-  }
-  for (int i = 0; i < input_field_names->length(); i++) {
-    Handle<Object> item(input_field_names->get(i), isolate);
-    DCHECK(IsString(*item));
-    Handle<String> string = Handle<String>::cast(item);
-    if (!added->Has(isolate, string)) {
-      merged_field_names->set(added->NumberOfElements(), *item);
-      added = StringSet::Add(isolate, added, string);
-    }
-  }
-  merged_field_names = FixedArray::RightTrimOrEmpty(isolate, merged_field_names,
-                                                    added->NumberOfElements());
-
-  // 11. Set mergedFields to ? PrepareTemporalFields(mergedFields,
-  // mergedFieldNames, «»).
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, merged_fields,
-      PrepareTemporalFields(isolate, merged_fields, merged_field_names,
-                            RequiredFields::kNone),
-      JSTemporalPlainDate);
-  // 12. Let options be ! OrdinaryObjectCreate(null).
-  Handle<JSObject> options = factory->NewJSObjectWithNullProto();
-  // 13. Perform ! CreateDataPropertyOrThrow(options, "overflow", "reject").
-  CHECK(JSReceiver::CreateDataProperty(
-            isolate, options, factory->overflow_string(),
-            factory->reject_string(), Just(kThrowOnError))
-            .FromJust());
-  // 14. Return ? DateFromFields(calendar, mergedFields, options).
-  return DateFromFields(isolate, calendar, merged_fields, options);
-}
-
-}  // namespace
-
-// #sec-temporal.plainmonthday.prototype.toplaindate
-MaybeHandle<JSTemporalPlainDate> JSTemporalPlainMonthDay::ToPlainDate(
-    Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day,
-    Handle<Object> item_obj) {
-  Factory* factory = isolate->factory();
-  // 5. Let receiverFieldNames be ? CalendarFields(calendar, « "day",
-  // "monthCode" »).
-  // 7. Let inputFieldNames be ? CalendarFields(calendar, « "year" »).
-  return PlainMonthDayOrYearMonthToPlainDate<JSTemporalPlainMonthDay>(
-      isolate, month_day, item_obj, factory->day_string(),
-      factory->monthCode_string(), factory->year_string());
-}
-
-// #sec-temporal.plainmonthday.prototype.getisofields
-MaybeHandle<JSReceiver> JSTemporalPlainMonthDay::GetISOFields(
-    Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day) {
-  Factory* factory = isolate->factory();
-  // 1. Let monthDay be the this value.
-  // 2. Perform ? RequireInternalSlot(monthDay,
-  // [[InitializedTemporalMonthDay]]).
-  // 3. Let fields be ! OrdinaryObjectCreate(%Object.prototype%).
-  Handle<JSObject> fields = factory->NewJSObject(isolate->object_function());
-  // 4. Perform ! CreateDataPropertyOrThrow(fields, "calendar",
-  // montyDay.[[Calendar]]).
-  CHECK(JSReceiver::CreateDataProperty(
-            isolate, fields, factory->calendar_string(),
-            Handle<JSReceiver>(month_day->calendar(), isolate),
-            Just(kThrowOnError))
-            .FromJust());
-
-  // 5. Perform ! CreateDataPropertyOrThrow(fields, "isoDay",
-  // 𝔽(montyDay.[[ISODay]])).
-  // 6. Perform ! CreateDataPropertyOrThrow(fields, "isoMonth",
-  // 𝔽(montyDay.[[ISOMonth]])).
-  // 7. Perform ! CreateDataPropertyOrThrow(fields, "isoYear",
-  // 𝔽(montyDay.[[ISOYear]])).
-  DEFINE_INT_FIELD(fields, isoDay, iso_day, month_day)
-  DEFINE_INT_FIELD(fields, isoMonth, iso_month, month_day)
-  DEFINE_INT_FIELD(fields, isoYear, iso_year, month_day)
-  // 8. Return fields.
-  return fields;
-}
-
-// #sec-temporal.plainmonthday.prototype.tojson
-MaybeHandle<String> JSTemporalPlainMonthDay::ToJSON(
-    Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day) {
-  return TemporalMonthDayToString(isolate, month_day, ShowCalendar::kAuto);
-}
-
-// #sec-temporal.plainmonthday.prototype.tostring
-MaybeHandle<String> JSTemporalPlainMonthDay::ToString(
-    Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day,
-    Handle<Object> options) {
-  return TemporalToString<JSTemporalPlainMonthDay, TemporalMonthDayToString>(
-      isolate, month_day, options, "Temporal.PlainMonthDay.prototype.toString");
-}
-
-// #sec-temporal.plainmonthday.prototype.tolocalestring
-MaybeHandle<String> JSTemporalPlainMonthDay::ToLocaleString(
-    Isolate* isolate, Handle<JSTemporalPlainMonthDay> month_day,
-    Handle<Object> locales, Handle<Object> options) {
-#ifdef V8_INTL_SUPPORT
-  return JSDateTimeFormat::TemporalToLocaleString(
-      isolate, month_day, locales, options,
-      "Temporal.PlainMonthDay.prototype.toLocaleString");
-#else   //  V8_INTL_SUPPORT
-  return TemporalMonthDayToString(isolate, month_day, ShowCalendar::kAuto);
-#endif  //  V8_INTL_SUPPORT
-}
-
-MaybeHandle<JSTemporalPlainYearMonth> JSTemporalPlainYearMonth::Constructor(
-    Isolate* isolate, Handle<JSFunction> target, Handle<HeapObject> new_target,
-    Handle<Object> iso_year_obj, Handle<Object> iso_month_obj,
-    Handle<Object> calendar_like, Handle<Object> reference_iso_day_obj) {
-  const char* method_name = "Temporal.PlainYearMonth";
-  // 1. If NewTarget is undefined, throw a TypeError exception.
-  if (IsUndefined(*new_target)) {
-    THROW_NEW_ERROR(isolate,
-                    NewTypeError(MessageTemplate::kMethodInvokedOnWrongType,
-                                 isolate->factory()->NewStringFromAsciiChecked(
-                                     method_name)),
-                    JSTemporalPlainYearMonth);
-  }
-  // 7. Let calendar be ? ToTemporalCalendarWithISODefault(calendarLike).
-  // 10. Return ? CreateTemporalYearMonth(y, m, calendar, ref, NewTarget).
-
-  // 3. Let y be ? ToIntegerThrowOnInfinity(isoYear).
-  TO_INT_THROW_ON_INFTY(iso_year, JSTemporalPlainYearMonth);
-  // 5. Let m be ? ToIntegerThrowOnInfinity(isoMonth).
-  TO_INT_THROW_ON_INFTY(iso_month, JSTemporalPlainYearMonth);
-  // 7. Let calendar be ? ToTemporalCalendarWithISODefault(calendarLike).
-  Handle<JSReceiver> calendar;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, calendar,
-      ToTemporalCalendarWithISODefault(isolate, calendar_like, method_name),
-      JSTemporalPlainYearMonth);
-
-  // 2. If referenceISODay is undefined, then
-  // a. Set referenceISODay to 1𝔽.
-  // ...
-  // 8. Let ref be ? ToIntegerThrowOnInfinity(referenceISODay).
-  int32_t ref = 1;
-  if (!IsUndefined(*reference_iso_day_obj)) {
-    TO_INT_THROW_ON_INFTY(reference_iso_day, JSTemporalPlainYearMonth);
-    ref = reference_iso_day;
-  }
-
-  // 10. Return ? CreateTemporalYearMonth(y, m, calendar, ref, NewTarget).
-  return CreateTemporalYearMonth(isolate, target, new_target, iso_year,
-                                 iso_month, calendar, ref);
-}
-
-namespace {
-
-// #sec-temporal-parsetemporalyearmonthstring
-Maybe<DateRecordWithCalendar> ParseTemporalYearMonthString(
-    Isolate* isolate, Handle<String> iso_string) {
-  TEMPORAL_ENTER_FUNC();
-
-  // 1. Assert: Type(isoString) is String.
-  // 2. If isoString does not satisfy the syntax of a TemporalYearMonthString
-  // (see 13.33), then
-  base::Optional<ParsedISO8601Result> parsed =
-      TemporalParser::ParseTemporalYearMonthString(isolate, iso_string);
-  if (!parsed.has_value()) {
-    THROW_NEW_ERROR_RETURN_VALUE(isolate,
-                                 NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
-                                 Nothing<DateRecordWithCalendar>());
-  }
-
-  // 3. If _isoString_ contains a |UTCDesignator|, then
-  if (parsed->utc_designator) {
-    // a. Throw a *RangeError* exception.
-    THROW_NEW_ERROR_RETURN_VALUE(isolate,
-                                 NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
-                                 Nothing<DateRecordWithCalendar>());
-  }
-
-  // 3. Let result be ? ParseISODateTime(isoString).
-  DateTimeRecordWithCalendar result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, result, ParseISODateTime(isolate, iso_string, *parsed),
-      Nothing<DateRecordWithCalendar>());
-
-  // 4. Return the Record { [[Year]]: result.[[Year]], [[Month]]:
-  // result.[[Month]], [[Day]]: result.[[Day]], [[Calendar]]:
-  // result.[[Calendar]] }.
-  DateRecordWithCalendar ret = {
-      {result.date.year, result.date.month, result.date.day}, result.calendar};
-  return Just(ret);
-}
-
-// #sec-temporal-totemporalyearmonth
-MaybeHandle<JSTemporalPlainYearMonth> ToTemporalYearMonth(
-    Isolate* isolate, Handle<Object> item_obj, Handle<Object> options,
-    const char* method_name) {
-  TEMPORAL_ENTER_FUNC();
-
-  // 2. Assert: Type(options) is Object or Undefined.
-  DCHECK(IsJSReceiver(*options) || IsUndefined(*options));
-  // 3. If Type(item) is Object, then
-  if (IsJSReceiver(*item_obj)) {
-    Handle<JSReceiver> item = Handle<JSReceiver>::cast(item_obj);
-    // a. If item has an [[InitializedTemporalYearMonth]] internal slot, then
-    // i. Return item.
-    if (IsJSTemporalPlainYearMonth(*item_obj)) {
-      return Handle<JSTemporalPlainYearMonth>::cast(item_obj);
-    }
-
-    // b. Let calendar be ? GetTemporalCalendarWithISODefault(item).
-    Handle<JSReceiver> calendar;
-    ASSIGN_RETURN_ON_EXCEPTION(
-        isolate, calendar,
-        GetTemporalCalendarWithISODefault(isolate, item, method_name),
-        JSTemporalPlainYearMonth);
-    // c. Let fieldNames be ? CalendarFields(calendar, « "month", "monthCode",
-    // "year" »).
-    Handle<FixedArray> field_names = MonthMonthCodeYearInFixedArray(isolate);
-    ASSIGN_RETURN_ON_EXCEPTION(isolate, field_names,
-                               CalendarFields(isolate, calendar, field_names),
-                               JSTemporalPlainYearMonth);
-    // d. Let fields be ? PrepareTemporalFields(item, fieldNames, «»).
-    Handle<JSReceiver> fields;
-    ASSIGN_RETURN_ON_EXCEPTION(isolate, fields,
-                               PrepareTemporalFields(isolate, item, field_names,
-                                                     RequiredFields::kNone),
-                               JSTemporalPlainYearMonth);
-    // e. Return ? YearMonthFromFields(calendar, fields, options).
-    return YearMonthFromFields(isolate, calendar, fields, options);
-  }
-  // 4. Perform ? ToTemporalOverflow(options).
-  MAYBE_RETURN_ON_EXCEPTION_VALUE(
-      isolate, ToTemporalOverflow(isolate, options, method_name),
-      Handle<JSTemporalPlainYearMonth>());
-  // 5. Let string be ? ToString(item).
-  Handle<String> string;
-  ASSIGN_RETURN_ON_EXCEPTION(isolate, string,
-                             Object::ToString(isolate, item_obj),
-                             JSTemporalPlainYearMonth);
-  // 6. Let result be ? ParseTemporalYearMonthString(string).
-  DateRecordWithCalendar result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, result, ParseTemporalYearMonthString(isolate, string),
-      Handle<JSTemporalPlainYearMonth>());
-  // 7. Let calendar be ? ToTemporalCalendarWithISODefault(result.[[Calendar]]).
-  Handle<JSReceiver> calendar;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, calendar,
-      ToTemporalCalendarWithISODefault(isolate, result.calendar, method_name),
-      JSTemporalPlainYearMonth);
-  // 8. Set result to ? CreateTemporalYearMonth(result.[[Year]],
-  // result.[[Month]], calendar, result.[[Day]]).
-  Handle<JSTemporalPlainYearMonth> created_result;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, created_result,
-      CreateTemporalYearMonth(isolate, result.date.year, result.date.month,
-                              calendar, result.date.day),
-      JSTemporalPlainYearMonth);
-  // 9. NOTE: The following operation is called without options, in order for
-  // the calendar to store a canonical value in the [[ISODay]] internal slot of
-  // the result.
-  // 10. Return ? CalendarYearMonthFromFields(calendar, result).
-  return YearMonthFromFields(isolate, calendar, created_result);
-}
-
-MaybeHandle<JSTemporalPlainYearMonth> ToTemporalYearMonth(
-    Isolate* isolate, Handle<Object> item_obj, const char* method_name) {
-  // 1. If options is not present, set options to undefined.
-  return ToTemporalYearMonth(
-      isolate, item_obj, isolate->factory()->undefined_value(), method_name);
-}
-
-}  // namespace
-
-// #sec-temporal.plainyearmonth.from
-MaybeHandle<JSTemporalPlainYearMonth> JSTemporalPlainYearMonth::From(
-    Isolate* isolate, Handle<Object> item, Handle<Object> options_obj) {
-  const char* method_name = "Temporal.PlainYearMonth.from";
-  // 1. Set options to ? GetOptionsObject(options).
-  Handle<JSReceiver> options;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, options, GetOptionsObject(isolate, options_obj, method_name),
-      JSTemporalPlainYearMonth);
-  // 2. If Type(item) is Object and item has an [[InitializedTemporalYearMonth]]
-  // internal slot, then
-  if (IsJSTemporalPlainYearMonth(*item)) {
-    // a. Perform ? ToTemporalOverflow(options).
-    MAYBE_RETURN_ON_EXCEPTION_VALUE(
-        isolate, ToTemporalOverflow(isolate, options, method_name),
-        Handle<JSTemporalPlainYearMonth>());
-    // b. Return ? CreateTemporalYearMonth(item.[[ISOYear]], item.[[ISOMonth]],
-    // item.[[Calendar]], item.[[ISODay]]).
-    Handle<JSTemporalPlainYearMonth> year_month =
-        Handle<JSTemporalPlainYearMonth>::cast(item);
-    return CreateTemporalYearMonth(
-        isolate, year_month->iso_year(), year_month->iso_month(),
-        handle(year_month->calendar(), isolate), year_month->iso_day());
-  }
-  // 3. Return ? ToTemporalYearMonth(item, options).
-  return ToTemporalYearMonth(isolate, item, options, method_name);
-}
-
-// #sec-temporal.plainyearmonth.compare
-MaybeHandle<Smi> JSTemporalPlainYearMonth::Compare(Isolate* isolate,
-                                                   Handle<Object> one_obj,
-                                                   Handle<Object> two_obj) {
-  const char* method_name = "Temporal.PlainYearMonth.compare";
-  // 1. Set one to ? ToTemporalYearMonth(one).
-  Handle<JSTemporalPlainYearMonth> one;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, one, ToTemporalYearMonth(isolate, one_obj, method_name), Smi);
-  // 2. Set two to ? ToTemporalYearMonth(two).
-  Handle<JSTemporalPlainYearMonth> two;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, two, ToTemporalYearMonth(isolate, two_obj, method_name), Smi);
-  // 3. Return 𝔽(! CompareISODate(one.[[ISOYear]], one.[[ISOMonth]],
-  // one.[[ISODay]], two.[[ISOYear]], two.[[ISOMonth]], two.[[ISODay]])).
-  return handle(Smi::FromInt(CompareISODate(
-                    {one->iso_year(), one->iso_month(), one->iso_day()},
-                    {two->iso_year(), two->iso_month(), two->iso_day()})),
-                isolate);
-}
-
-// #sec-temporal.plainyearmonth.prototype.equals
-MaybeHandle<Oddball> JSTemporalPlainYearMonth::Equals(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-    Handle<Object> other_obj) {
-  // 1. Let yearMonth be the this value.
-  // 2. Perform ? RequireInternalSlot(yearMonth,
-  // [[InitializedTemporalYearMonth]]).
-  // 3. Set other to ? ToTemporalYearMonth(other).
-  Handle<JSTemporalPlainYearMonth> other;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, other,
-      ToTemporalYearMonth(isolate, other_obj,
-                          "Temporal.PlainYearMonth.prototype.equals"),
-      Oddball);
-  // 4. If yearMonth.[[ISOYear]] ≠ other.[[ISOYear]], return false.
-  if (year_month->iso_year() != other->iso_year())
-    return isolate->factory()->false_value();
-  // 5. If yearMonth.[[ISOMonth]] ≠ other.[[ISOMonth]], return false.
-  if (year_month->iso_month() != other->iso_month())
-    return isolate->factory()->false_value();
-  // 6. If yearMonth.[[ISODay]] ≠ other.[[ISODay]], return false.
-  if (year_month->iso_day() != other->iso_day())
-    return isolate->factory()->false_value();
-  // 7. Return ? CalendarEquals(yearMonth.[[Calendar]], other.[[Calendar]]).
-  return CalendarEquals(isolate,
-                        Handle<JSReceiver>(year_month->calendar(), isolate),
-                        Handle<JSReceiver>(other->calendar(), isolate));
-}
-
-namespace {
-
-MaybeHandle<JSTemporalPlainYearMonth>
-AddDurationToOrSubtractDurationFromPlainYearMonth(
-    Isolate* isolate, Arithmetic operation,
-    Handle<JSTemporalPlainYearMonth> year_month,
-    Handle<Object> temporal_duration_like, Handle<Object> options_obj,
-    const char* method_name) {
-  // 1. Let duration be ? ToTemporalDurationRecord(temporalDurationLike).
-  DurationRecord duration;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, duration,
-      temporal::ToTemporalDurationRecord(isolate, temporal_duration_like,
-                                         method_name),
-      Handle<JSTemporalPlainYearMonth>());
-
-  // 2. If operation is subtract, then
-  if (operation == Arithmetic::kSubtract) {
-    // a. Set duration to ! CreateNegatedDurationRecord(duration).
-    duration = CreateNegatedDurationRecord(isolate, duration).ToChecked();
-  }
-  // 3. Let balanceResult be ? BalanceDuration(duration.[[Days]],
-  // duration.[[Hours]], duration.[[Minutes]], duration.[[Seconds]],
-  // duration.[[Milliseconds]], duration.[[Microseconds]],
-  // duration.[[Nanoseconds]], "day").
-  TimeDurationRecord balance_result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, balance_result,
-      BalanceDuration(isolate, Unit::kDay, duration.time_duration, method_name),
-      Handle<JSTemporalPlainYearMonth>());
-  // 4. Set options to ? GetOptionsObject(options).
-  Handle<JSReceiver> options;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, options, GetOptionsObject(isolate, options_obj, method_name),
-      JSTemporalPlainYearMonth);
-  // 5. Let calendar be yearMonth.[[Calendar]].
-  Handle<JSReceiver> calendar(year_month->calendar(), isolate);
-
-  // 6. Let fieldNames be ? CalendarFields(calendar, « "monthCode", "year" »).
-  Factory* factory = isolate->factory();
-  Handle<FixedArray> field_names = MonthCodeYearInFixedArray(isolate);
-  ASSIGN_RETURN_ON_EXCEPTION(isolate, field_names,
-                             CalendarFields(isolate, calendar, field_names),
-                             JSTemporalPlainYearMonth);
-
-  // 7. Let fields be ? PrepareTemporalFields(yearMonth, fieldNames, «»).
-  Handle<JSReceiver> fields;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, fields,
-      PrepareTemporalFields(isolate, year_month, field_names,
-                            RequiredFields::kNone),
-      JSTemporalPlainYearMonth);
-
-  // 8. Set sign to ! DurationSign(duration.[[Years]], duration.[[Months]],
-  // duration.[[Weeks]], balanceResult.[[Days]], 0, 0, 0, 0, 0, 0).
-  int32_t sign =
-      DurationSign(isolate, {duration.years,
-                             duration.months,
-                             duration.weeks,
-                             {balance_result.days, 0, 0, 0, 0, 0, 0}});
-
-  // 9. If sign < 0, then
-  Handle<Object> day;
-  if (sign < 0) {
-    // a. Let dayFromCalendar be ? CalendarDaysInMonth(calendar, yearMonth).
-    Handle<Object> day_from_calendar;
-    ASSIGN_RETURN_ON_EXCEPTION(
-        isolate, day_from_calendar,
-        temporal::CalendarDaysInMonth(isolate, calendar, year_month),
-        JSTemporalPlainYearMonth);
-
-    // b. Let day be ? ToPositiveInteger(dayFromCalendar).
-    ASSIGN_RETURN_ON_EXCEPTION(isolate, day,
-                               ToPositiveInteger(isolate, day_from_calendar),
-                               JSTemporalPlainYearMonth);
-    // 10. Else,
-  } else {
-    // a. Let day be 1.
-    day = handle(Smi::FromInt(1), isolate);
-  }
-  // 11. Perform ! CreateDataPropertyOrThrow(fields, "day", day).
-  CHECK(JSReceiver::CreateDataProperty(isolate, fields, factory->day_string(),
-                                       day, Just(kThrowOnError))
-            .FromJust());
-
-  // 12. Let date be ? CalendarDateFromFields(calendar, fields).
-  Handle<JSTemporalPlainDate> date;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, date,
-      FromFields<JSTemporalPlainDate>(
-          isolate, calendar, fields, isolate->factory()->undefined_value(),
-          isolate->factory()->dateFromFields_string(),
-          JS_TEMPORAL_PLAIN_DATE_TYPE),
-      JSTemporalPlainYearMonth);
-
-  // 13. Let durationToAdd be ! CreateTemporalDuration(duration.[[Years]],
-  // duration.[[Months]], duration.[[Weeks]], balanceResult.[[Days]], 0, 0, 0,
-  // 0, 0, 0).
-  Handle<JSTemporalDuration> duration_to_add =
-      CreateTemporalDuration(isolate, {duration.years,
-                                       duration.months,
-                                       duration.weeks,
-                                       {balance_result.days, 0, 0, 0, 0, 0, 0}})
-          .ToHandleChecked();
-  // 14. Let optionsCopy be OrdinaryObjectCreate(null).
-  Handle<JSReceiver> options_copy =
-      isolate->factory()->NewJSObjectWithNullProto();
-
-  // 15. Let entries be ? EnumerableOwnPropertyNames(options, key+value).
-  // 16. For each element nextEntry of entries, do
-  // a. Perform ! CreateDataPropertyOrThrow(optionsCopy, nextEntry[0],
-  // nextEntry[1]).
-  bool set;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, set,
-      JSReceiver::SetOrCopyDataProperties(
-          isolate, options_copy, options,
-          PropertiesEnumerationMode::kEnumerationOrder, nullptr, false),
-      Handle<JSTemporalPlainYearMonth>());
-
-  // 17. Let addedDate be ? CalendarDateAdd(calendar, date, durationToAdd,
-  // options).
-  Handle<JSTemporalPlainDate> added_date;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, added_date,
-      CalendarDateAdd(isolate, calendar, date, duration_to_add, options),
-      JSTemporalPlainYearMonth);
-  // 18. Let addedDateFields be ? PrepareTemporalFields(addedDate, fieldNames,
-  // «»).
-  Handle<JSReceiver> added_date_fields;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, added_date_fields,
-      PrepareTemporalFields(isolate, added_date, field_names,
-                            RequiredFields::kNone),
-      JSTemporalPlainYearMonth);
-  // 19. Return ? CalendarYearMonthFromFields(calendar, addedDateFields,
-  // optionsCopy).
-  return FromFields<JSTemporalPlainYearMonth>(
-      isolate, calendar, added_date_fields, options_copy,
-      isolate->factory()->yearMonthFromFields_string(),
-      JS_TEMPORAL_PLAIN_YEAR_MONTH_TYPE);
-}
-
-}  // namespace
-
-// #sec-temporal.plainyearmonth.prototype.add
-MaybeHandle<JSTemporalPlainYearMonth> JSTemporalPlainYearMonth::Add(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-    Handle<Object> temporal_duration_like, Handle<Object> options) {
-  return AddDurationToOrSubtractDurationFromPlainYearMonth(
-      isolate, Arithmetic::kAdd, year_month, temporal_duration_like, options,
-      "Temporal.PlainYearMonth.prototype.add");
-}
-
-// #sec-temporal.plainyearmonth.prototype.subtract
-MaybeHandle<JSTemporalPlainYearMonth> JSTemporalPlainYearMonth::Subtract(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-    Handle<Object> temporal_duration_like, Handle<Object> options) {
-  return AddDurationToOrSubtractDurationFromPlainYearMonth(
-      isolate, Arithmetic::kSubtract, year_month, temporal_duration_like,
-      options, "Temporal.PlainYearMonth.prototype.subtract");
-}
-
-namespace {
-// #sec-temporal-differencetemporalplandyearmonth
-MaybeHandle<JSTemporalDuration> DifferenceTemporalPlainYearMonth(
-    Isolate* isolate, TimePreposition operation,
-    Handle<JSTemporalPlainYearMonth> year_month, Handle<Object> other_obj,
-    Handle<Object> options, const char* method_name) {
-  TEMPORAL_ENTER_FUNC();
-  // 1. If operation is since, let sign be -1. Otherwise, let sign be 1.
-  double sign = operation == TimePreposition::kSince ? -1 : 1;
-  // 2. Set other to ? ToTemporalDateTime(other).
-  Handle<JSTemporalPlainYearMonth> other;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, other, ToTemporalYearMonth(isolate, other_obj, method_name),
-      JSTemporalDuration);
-  // 3. Let calendar be yearMonth.[[Calendar]].
-  Handle<JSReceiver> calendar(year_month->calendar(), isolate);
-
-  // 4. If ? CalendarEquals(calendar, other.[[Calendar]]) is false, throw a
-  // RangeError exception.
-  bool calendar_equals;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, calendar_equals,
-      CalendarEqualsBool(isolate, calendar, handle(other->calendar(), isolate)),
-      Handle<JSTemporalDuration>());
-  if (!calendar_equals) {
-    THROW_NEW_ERROR(isolate, NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
-                    JSTemporalDuration);
-  }
-
-  // 5. Let settings be ? GetDifferenceSettings(operation, options, date, «
-  // "week", "day" », "month", "year").
-  DifferenceSettings settings;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, settings,
-      GetDifferenceSettings(isolate, operation, options, UnitGroup::kDate,
-                            DisallowedUnitsInDifferenceSettings::kWeekAndDay,
-                            Unit::kMonth, Unit::kYear, method_name),
-      Handle<JSTemporalDuration>());
-  // 6. Let fieldNames be ? CalendarFields(calendar, « "monthCode", "year" »).
-  Factory* factory = isolate->factory();
-  Handle<FixedArray> field_names = MonthCodeYearInFixedArray(isolate);
-  ASSIGN_RETURN_ON_EXCEPTION(isolate, field_names,
-                             CalendarFields(isolate, calendar, field_names),
-                             JSTemporalDuration);
-
-  // 7. Let otherFields be ? PrepareTemporalFields(other, fieldNames, «»).
-  Handle<JSReceiver> other_fields;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, other_fields,
-      PrepareTemporalFields(isolate, other, field_names, RequiredFields::kNone),
-      JSTemporalDuration);
-  // 8. Perform ! CreateDataPropertyOrThrow(otherFields, "day", 1𝔽).
-  Handle<Object> one = handle(Smi::FromInt(1), isolate);
-  CHECK(JSReceiver::CreateDataProperty(isolate, other_fields,
-                                       factory->day_string(), one,
-                                       Just(kThrowOnError))
-            .FromJust());
-  // 9. Let otherDate be ? CalendarDateFromFields(calendar, otherFields).
-  //  DateFromFields(Isolate* isolate,
-  Handle<JSTemporalPlainDate> other_date;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, other_date,
-      DateFromFields(isolate, calendar, other_fields,
-                     isolate->factory()->undefined_value()),
-      JSTemporalDuration);
-  // 10. Let thisFields be ? PrepareTemporalFields(yearMonth, fieldNames, «»).
-  Handle<JSReceiver> this_fields;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, this_fields,
-      PrepareTemporalFields(isolate, year_month, field_names,
-                            RequiredFields::kNone),
-      JSTemporalDuration);
-  // 11. Perform ! CreateDataPropertyOrThrow(thisFields, "day", 1𝔽).
-  CHECK(JSReceiver::CreateDataProperty(isolate, this_fields,
-                                       factory->day_string(), one,
-                                       Just(kThrowOnError))
-            .FromJust());
-  // 12. Let thisDate be ? CalendarDateFromFields(calendar, thisFields).
-  Handle<JSTemporalPlainDate> this_date;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, this_date,
-      DateFromFields(isolate, calendar, this_fields,
-                     isolate->factory()->undefined_value()),
-      JSTemporalDuration);
-  // 13. Let untilOptions be ? MergeLargestUnitOption(settings.[[Options]],
-  // settings.[[LargestUnit]]).
-  Handle<JSReceiver> until_options;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, until_options,
-      MergeLargestUnitOption(isolate, settings.options, settings.largest_unit),
-      JSTemporalDuration);
-  // 14. Let result be ? CalendarDateUntil(calendar, thisDate, otherDate,
-  // untilOptions).
-  Handle<JSTemporalDuration> result;
-  ASSIGN_RETURN_ON_EXCEPTION(isolate, result,
-                             CalendarDateUntil(isolate, calendar, this_date,
-                                               other_date, until_options),
-                             JSTemporalDuration);
-
-  // 15. If settings.[[SmallestUnit]] is not "month" or
-  // settings.[[RoundingIncrement]] ≠ 1, then
-  if (settings.smallest_unit != Unit::kMonth ||
-      settings.rounding_increment != 1) {
-    // a. Set result to (? RoundDuration(result.[[Years]], result.[[Months]], 0,
-    // 0, 0, 0, 0, 0, 0, 0, settings.[[RoundingIncrement]],
-    // settings.[[SmallestUnit]], settings.[[RoundingMode]],
-    // thisDate)).[[DurationRecord]].
-    DurationRecordWithRemainder round_result;
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, round_result,
-        RoundDuration(isolate,
-                      {Object::Number(result->years()),
-                       Object::Number(result->months()),
-                       0,
-                       {0, 0, 0, 0, 0, 0, 0}},
-                      settings.rounding_increment, settings.smallest_unit,
-                      settings.rounding_mode, this_date, method_name),
-        Handle<JSTemporalDuration>());
-    // 16. Return ! CreateTemporalDuration(sign × result.[[Years]], sign ×
-    // result.[[Months]], 0, 0, 0, 0, 0, 0, 0, 0).
-    return CreateTemporalDuration(isolate, {round_result.record.years * sign,
-                                            round_result.record.months * sign,
-                                            0,
-                                            {0, 0, 0, 0, 0, 0, 0}})
-        .ToHandleChecked();
-  }
-  // 16. Return ! CreateTemporalDuration(sign × result.[[Years]], sign ×
-  // result.[[Months]], 0, 0, 0, 0, 0, 0, 0, 0).
-  return CreateTemporalDuration(isolate,
-                                {Object::Number(result->years()) * sign,
-                                 Object::Number(result->months()) * sign,
-                                 0,
-                                 {0, 0, 0, 0, 0, 0, 0}})
-      .ToHandleChecked();
-}
-
-}  // namespace
-
-// #sec-temporal.plainyearmonth.prototype.until
-MaybeHandle<JSTemporalDuration> JSTemporalPlainYearMonth::Until(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> handle,
-    Handle<Object> other, Handle<Object> options) {
-  TEMPORAL_ENTER_FUNC();
-  return DifferenceTemporalPlainYearMonth(
-      isolate, TimePreposition::kUntil, handle, other, options,
-      "Temporal.PlainYearMonth.prototype.until");
-}
-
-// #sec-temporal.plainyearmonth.prototype.since
-MaybeHandle<JSTemporalDuration> JSTemporalPlainYearMonth::Since(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> handle,
-    Handle<Object> other, Handle<Object> options) {
-  TEMPORAL_ENTER_FUNC();
-  return DifferenceTemporalPlainYearMonth(
-      isolate, TimePreposition::kSince, handle, other, options,
-      "Temporal.PlainYearMonth.prototype.since");
-}
-
-// #sec-temporal.plainyearmonth.prototype.with
-MaybeHandle<JSTemporalPlainYearMonth> JSTemporalPlainYearMonth::With(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> temporal_year_month,
-    Handle<Object> temporal_year_month_like_obj, Handle<Object> options_obj) {
-  // 6. Let fieldNames be ? CalendarFields(calendar, « "month", "monthCode",
-  // "year" »).
-  Handle<FixedArray> field_names = MonthMonthCodeYearInFixedArray(isolate);
-  return PlainDateOrYearMonthOrMonthDayWith<JSTemporalPlainYearMonth,
-                                            YearMonthFromFields>(
-      isolate, temporal_year_month, temporal_year_month_like_obj, options_obj,
-      field_names, "Temporal.PlainYearMonth.prototype.with");
-}
-
-// #sec-temporal.plainyearmonth.prototype.toplaindate
-MaybeHandle<JSTemporalPlainDate> JSTemporalPlainYearMonth::ToPlainDate(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-    Handle<Object> item_obj) {
-  Factory* factory = isolate->factory();
-  // 5. Let receiverFieldNames be ? CalendarFields(calendar, « "monthCode",
-  // "year" »).
-  // 7. Let inputFieldNames be ? CalendarFields(calendar, « "day" »).
-  return PlainMonthDayOrYearMonthToPlainDate<JSTemporalPlainYearMonth>(
-      isolate, year_month, item_obj, factory->monthCode_string(),
-      factory->year_string(), factory->day_string());
-}
-
-// #sec-temporal.plainyearmonth.prototype.getisofields
-MaybeHandle<JSReceiver> JSTemporalPlainYearMonth::GetISOFields(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month) {
-  Factory* factory = isolate->factory();
-  // 1. Let yearMonth be the this value.
-  // 2. Perform ? RequireInternalSlot(yearMonth,
-  // [[InitializedTemporalYearMonth]]).
-  // 3. Let fields be ! OrdinaryObjectCreate(%Object.prototype%).
-  Handle<JSObject> fields =
-      isolate->factory()->NewJSObject(isolate->object_function());
-  // 4. Perform ! CreateDataPropertyOrThrow(fields, "calendar",
-  // yearMonth.[[Calendar]]).
-  CHECK(JSReceiver::CreateDataProperty(
-            isolate, fields, factory->calendar_string(),
-            Handle<JSReceiver>(year_month->calendar(), isolate),
-            Just(kThrowOnError))
-            .FromJust());
-  // 5. Perform ! CreateDataPropertyOrThrow(fields, "isoDay",
-  // 𝔽(yearMonth.[[ISODay]])).
-  // 6. Perform ! CreateDataPropertyOrThrow(fields, "isoMonth",
-  // 𝔽(yearMonth.[[ISOMonth]])).
-  // 7. Perform ! CreateDataPropertyOrThrow(fields, "isoYear",
-  // 𝔽(yearMonth.[[ISOYear]])).
-  DEFINE_INT_FIELD(fields, isoDay, iso_day, year_month)
-  DEFINE_INT_FIELD(fields, isoMonth, iso_month, year_month)
-  DEFINE_INT_FIELD(fields, isoYear, iso_year, year_month)
-  // 8. Return fields.
-  return fields;
-}
-
-// #sec-temporal.plainyearmonth.prototype.tojson
-MaybeHandle<String> JSTemporalPlainYearMonth::ToJSON(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month) {
-  return TemporalYearMonthToString(isolate, year_month, ShowCalendar::kAuto);
-}
-
-// #sec-temporal.plainyearmonth.prototype.tostring
-MaybeHandle<String> JSTemporalPlainYearMonth::ToString(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-    Handle<Object> options) {
-  return TemporalToString<JSTemporalPlainYearMonth, TemporalYearMonthToString>(
-      isolate, year_month, options,
-      "Temporal.PlainYearMonth.prototype.toString");
-}
-
-// #sec-temporal.plainyearmonth.prototype.tolocalestring
-MaybeHandle<String> JSTemporalPlainYearMonth::ToLocaleString(
-    Isolate* isolate, Handle<JSTemporalPlainYearMonth> year_month,
-    Handle<Object> locales, Handle<Object> options) {
-#ifdef V8_INTL_SUPPORT
-  return JSDateTimeFormat::TemporalToLocaleString(
-      isolate, year_month, locales, options,
-      "Temporal.PlainYearMonth.prototype.toLocaleString");
-#else   //  V8_INTL_SUPPORT
-  return TemporalYearMonthToString(isolate, year_month, ShowCalendar::kAuto);
-#endif  //  V8_INTL_SUPPORT
 }
 
 // #sec-temporal-plaintime-constructor
@@ -16744,76 +15003,6 @@ MaybeHandle<JSTemporalZonedDateTime> JSTemporalZonedDateTime::WithTimeZone(
   Handle<BigInt> nanoseconds(zoned_date_time->nanoseconds(), isolate);
   Handle<JSReceiver> calendar(zoned_date_time->calendar(), isolate);
   return CreateTemporalZonedDateTime(isolate, nanoseconds, time_zone, calendar);
-}
-
-// Common code shared by ZonedDateTime.prototype.toPlainYearMonth and
-// toPlainMonthDay
-template <typename T,
-          MaybeHandle<T> (*from_fields_func)(
-              Isolate*, Handle<JSReceiver>, Handle<JSReceiver>, Handle<Object>)>
-MaybeHandle<T> ZonedDateTimeToPlainYearMonthOrMonthDay(
-    Isolate* isolate, Handle<JSTemporalZonedDateTime> zoned_date_time,
-    Handle<String> field_name_1, Handle<String> field_name_2,
-    const char* method_name) {
-  TEMPORAL_ENTER_FUNC();
-  Factory* factory = isolate->factory();
-  // 1. Let zonedDateTime be the this value.
-  // 2. Perform ? RequireInternalSlot(zonedDateTime,
-  // [[InitializedTemporalZonedDateTime]]).
-  // 3. Let timeZone be zonedDateTime.[[TimeZone]].
-  Handle<JSReceiver> time_zone(zoned_date_time->time_zone(), isolate);
-  // 4. Let instant be ! CreateTemporalInstant(zonedDateTime.[[Nanoseconds]]).
-  Handle<JSTemporalInstant> instant =
-      temporal::CreateTemporalInstant(
-          isolate, handle(zoned_date_time->nanoseconds(), isolate))
-          .ToHandleChecked();
-  // 5. Let calendar be zonedDateTime.[[Calendar]].
-  Handle<JSReceiver> calendar(zoned_date_time->calendar(), isolate);
-  // 6. Let temporalDateTime be ?
-  // temporal::BuiltinTimeZoneGetPlainDateTimeFor(timeZone, instant, calendar).
-  Handle<JSTemporalPlainDateTime> temporal_date_time;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, temporal_date_time,
-      temporal::BuiltinTimeZoneGetPlainDateTimeFor(isolate, time_zone, instant,
-                                                   calendar, method_name),
-      T);
-  // 7. Let fieldNames be ? CalendarFields(calendar, « field_name_1,
-  // field_name_2 »).
-  Handle<FixedArray> field_names = factory->NewFixedArray(2);
-  field_names->set(0, *field_name_1);
-  field_names->set(1, *field_name_2);
-  ASSIGN_RETURN_ON_EXCEPTION(isolate, field_names,
-                             CalendarFields(isolate, calendar, field_names), T);
-  // 8. Let fields be ? PrepareTemporalFields(temporalDateTime, fieldNames, «»).
-  Handle<JSReceiver> fields;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, fields,
-      PrepareTemporalFields(isolate, temporal_date_time, field_names,
-                            RequiredFields::kNone),
-      T);
-  // 9. Return ? XxxFromFields(calendar, fields).
-  return from_fields_func(isolate, calendar, fields,
-                          factory->undefined_value());
-}
-
-// #sec-temporal.zoneddatetime.prototype.toplainyearmonth
-MaybeHandle<JSTemporalPlainYearMonth> JSTemporalZonedDateTime::ToPlainYearMonth(
-    Isolate* isolate, Handle<JSTemporalZonedDateTime> zoned_date_time) {
-  return ZonedDateTimeToPlainYearMonthOrMonthDay<JSTemporalPlainYearMonth,
-                                                 YearMonthFromFields>(
-      isolate, zoned_date_time, isolate->factory()->monthCode_string(),
-      isolate->factory()->year_string(),
-      "Temporal.ZonedDateTime.prototype.toPlainYearMonth");
-}
-
-// #sec-temporal.zoneddatetime.prototype.toplainmonthday
-MaybeHandle<JSTemporalPlainMonthDay> JSTemporalZonedDateTime::ToPlainMonthDay(
-    Isolate* isolate, Handle<JSTemporalZonedDateTime> zoned_date_time) {
-  return ZonedDateTimeToPlainYearMonthOrMonthDay<JSTemporalPlainMonthDay,
-                                                 MonthDayFromFields>(
-      isolate, zoned_date_time, isolate->factory()->day_string(),
-      isolate->factory()->monthCode_string(),
-      "Temporal.ZonedDateTime.prototype.toPlainMonthDay");
 }
 
 namespace {

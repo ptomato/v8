@@ -25,6 +25,7 @@
 #include "src/logging/runtime-call-stats-scope.h"
 #include "src/objects/instance-type.h"
 #include "src/objects/js-array.h"
+#include "src/objects/js-temporal-objects.h"
 #include "src/objects/objects.h"
 #include "src/sandbox/testing.h"
 #ifdef ENABLE_VTUNE_TRACEMARK
@@ -1571,6 +1572,58 @@ static void InstallError(Isolate* isolate, Handle<JSObject> global,
 
 namespace {
 
+void InstallTemporalStaticMethod(Isolate* i, Handle<JSObject> constructor,
+                                 const char* prop, int length,
+                                 TemporalConstructorType ctor_type) {
+  Handle<String> function_name = i->factory()->InternalizeUtf8String(prop);
+  Handle<JSFunction> fun = SimpleCreateFunction(
+      i, function_name, Builtin::kTemporalStaticMethodDispatcher, length, true);
+
+  JSObject::AddProperty(i, fun, i->factory()->temporal_ctor_id_symbol(),
+                        handle(Smi::FromEnum(ctor_type), i), NONE);
+  JSObject::AddProperty(i, fun, i->factory()->temporal_calendar_prop_symbol(),
+                        function_name, NONE);
+
+  JSObject::AddProperty(i, constructor, function_name, fun, DONT_ENUM);
+}
+
+void InstallTemporalPrototypeGetter(Isolate* i, Handle<JSObject> proto,
+                                    Handle<Name> prop,
+                                    TemporalConstructorType ctor_type) {
+  Handle<String> getter_name =
+      Name::ToFunctionName(i, prop, i->factory()->get_string())
+          .ToHandleChecked();
+  Handle<JSFunction> getter = SimpleCreateFunction(
+      i, getter_name, Builtin::kTemporalPrototypeMethodDispatcher, 0, true);
+
+  JSObject::AddProperty(i, getter, i->factory()->temporal_ctor_id_symbol(),
+                        handle(Smi::FromEnum(ctor_type), i), NONE);
+  JSObject::AddProperty(
+      i, getter, i->factory()->temporal_calendar_prop_symbol(), prop, NONE);
+
+  Handle<Object> setter = i->factory()->undefined_value();
+
+  JSObject::DefineOwnAccessorIgnoreAttributes(proto, prop, getter, setter,
+                                              DONT_ENUM)
+      .Check();
+}
+
+void InstallTemporalPrototypeMethod(Isolate* i, Handle<JSObject> proto,
+                                    const char* prop, int length,
+                                    TemporalConstructorType ctor_type) {
+  Handle<String> function_name = i->factory()->InternalizeUtf8String(prop);
+  Handle<JSFunction> fun = SimpleCreateFunction(
+      i, function_name, Builtin::kTemporalPrototypeMethodDispatcher, length,
+      true);
+
+  JSObject::AddProperty(i, fun, i->factory()->temporal_ctor_id_symbol(),
+                        handle(Smi::FromEnum(ctor_type), i), NONE);
+  JSObject::AddProperty(i, fun, i->factory()->temporal_calendar_prop_symbol(),
+                        function_name, NONE);
+
+  JSObject::AddProperty(i, proto, function_name, fun, DONT_ENUM);
+}
+
 Handle<JSObject> InitializeTemporal(Isolate* isolate) {
   Handle<NativeContext> native_context = isolate->native_context();
 
@@ -1601,590 +1654,409 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
 
     // Note: There are NO Temporal.Now.plainTime
     // See https://github.com/tc39/proposal-temporal/issues/1540
-#define NOW_LIST(V)                        \
-  V(timeZone, TimeZone, 0)                 \
-  V(instant, Instant, 0)                   \
-  V(plainDateTime, PlainDateTime, 1)       \
-  V(plainDateTimeISO, PlainDateTimeISO, 0) \
-  V(zonedDateTime, ZonedDateTime, 1)       \
-  V(zonedDateTimeISO, ZonedDateTimeISO, 0) \
-  V(plainDate, PlainDate, 1)               \
-  V(plainDateISO, PlainDateISO, 0)         \
-  V(plainTimeISO, PlainTimeISO, 0)
+#define NOW_LIST(V)      \
+  V(timeZone, 0)         \
+  V(instant, 0)          \
+  V(plainDateTime, 1)    \
+  V(plainDateTimeISO, 0) \
+  V(zonedDateTime, 1)    \
+  V(zonedDateTimeISO, 0) \
+  V(plainDate, 1)        \
+  V(plainDateISO, 0)     \
+  V(plainTimeISO, 0)
 
-#define INSTALL_NOW_FUNC(p, N, n) \
-  SimpleInstallFunction(isolate, now, #p, Builtin::kTemporalNow##N, n, false);
+#define INSTALL_NOW_FUNC(p, n) \
+  InstallTemporalStaticMethod(isolate, now, #p, n, kNow);
 
     NOW_LIST(INSTALL_NOW_FUNC)
 #undef INSTALL_NOW_FUNC
 #undef NOW_LIST
   }
+
 #define INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(N, U, NUM_ARGS)                    \
-  Handle<JSFunction> obj_func = InstallFunction(                               \
-      isolate, temporal, #N, JS_TEMPORAL_##U##_TYPE,                           \
-      JSTemporal##N::kHeaderSize, 0, isolate->factory()->the_hole_value(),     \
-      Builtin::kTemporal##N##Constructor);                                     \
+  Handle<JSFunction> obj_func = CreateFunction(                                \
+      isolate, #N, JS_TEMPORAL_##U##_TYPE, JSTemporal##N::kHeaderSize, 0,      \
+      isolate->factory()->the_hole_value(),                                    \
+      Builtin::kTemporalConstructorDispatcher);                                \
+  JSObject::AddProperty(isolate, temporal, #N, obj_func, DONT_ENUM);           \
   obj_func->shared()->set_length(NUM_ARGS);                                    \
   obj_func->shared()->DontAdaptArguments();                                    \
+  JSObject::AddProperty(isolate, obj_func,                                     \
+                        isolate->factory()->temporal_ctor_id_symbol(),         \
+                        handle(Smi::FromEnum(k##N), isolate), NONE);           \
   InstallWithIntrinsicDefaultProto(isolate, obj_func,                          \
                                    Context::JS_TEMPORAL_##U##_FUNCTION_INDEX); \
   Handle<JSObject> prototype(JSObject::cast(obj_func->instance_prototype()),   \
                              isolate);                                         \
   InstallToStringTag(isolate, prototype, "Temporal." #N);
 
-#define INSTALL_TEMPORAL_FUNC(T, name, N, arg)                              \
-  SimpleInstallFunction(isolate, obj_func, #name, Builtin::kTemporal##T##N, \
-                        arg, false);
+#define INSTALL_TEMPORAL_FUNC(T, name, len) \
+  InstallTemporalStaticMethod(isolate, obj_func, #name, len, k##T);
+#define INSTALL_TEMPORAL_GETTER(T, name)             \
+  InstallTemporalPrototypeGetter(isolate, prototype, \
+                                 isolate->factory()->name##_string(), k##T);
+#define INSTALL_TEMPORAL_METHOD(T, name, len) \
+  InstallTemporalPrototypeMethod(isolate, prototype, #name, len, k##T);
 
   {  // -- P l a i n D a t e
      // #sec-temporal-plaindate-objects
      // #sec-temporal.plaindate
     INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(PlainDate, PLAIN_DATE, 3)
-    INSTALL_TEMPORAL_FUNC(PlainDate, from, From, 1)
-    INSTALL_TEMPORAL_FUNC(PlainDate, compare, Compare, 2)
+    INSTALL_TEMPORAL_FUNC(PlainDate, from, 1)
+    INSTALL_TEMPORAL_FUNC(PlainDate, compare, 2)
 
+    INSTALL_TEMPORAL_GETTER(PlainDate, calendar)
+    INSTALL_TEMPORAL_GETTER(PlainDate, year)
+    INSTALL_TEMPORAL_GETTER(PlainDate, month)
+    INSTALL_TEMPORAL_GETTER(PlainDate, monthCode)
+    INSTALL_TEMPORAL_GETTER(PlainDate, day)
+    INSTALL_TEMPORAL_GETTER(PlainDate, dayOfWeek)
+    INSTALL_TEMPORAL_GETTER(PlainDate, dayOfYear)
+    INSTALL_TEMPORAL_GETTER(PlainDate, weekOfYear)
+    INSTALL_TEMPORAL_GETTER(PlainDate, daysInWeek)
+    INSTALL_TEMPORAL_GETTER(PlainDate, daysInMonth)
+    INSTALL_TEMPORAL_GETTER(PlainDate, daysInYear)
+    INSTALL_TEMPORAL_GETTER(PlainDate, monthsInYear)
+    INSTALL_TEMPORAL_GETTER(PlainDate, inLeapYear)
 #ifdef V8_INTL_SUPPORT
-#define PLAIN_DATE_GETTER_LIST_INTL(V) \
-  V(era, Era)                          \
-  V(eraYear, EraYear)
-#else
-#define PLAIN_DATE_GETTER_LIST_INTL(V)
+    INSTALL_TEMPORAL_GETTER(PlainDate, era)
+    INSTALL_TEMPORAL_GETTER(PlainDate, eraYear)
 #endif  // V8_INTL_SUPPORT
 
-#define PLAIN_DATE_GETTER_LIST(V) \
-  PLAIN_DATE_GETTER_LIST_INTL(V)  \
-  V(calendar, Calendar)           \
-  V(year, Year)                   \
-  V(month, Month)                 \
-  V(monthCode, MonthCode)         \
-  V(day, Day)                     \
-  V(dayOfWeek, DayOfWeek)         \
-  V(dayOfYear, DayOfYear)         \
-  V(weekOfYear, WeekOfYear)       \
-  V(daysInWeek, DaysInWeek)       \
-  V(daysInMonth, DaysInMonth)     \
-  V(daysInYear, DaysInYear)       \
-  V(monthsInYear, MonthsInYear)   \
-  V(inLeapYear, InLeapYear)
-
-#define INSTALL_PLAIN_DATE_GETTER_FUNC(p, N)                                \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalPlainDatePrototype##N, true);
-
-    PLAIN_DATE_GETTER_LIST(INSTALL_PLAIN_DATE_GETTER_FUNC)
-#undef PLAIN_DATE_GETTER_LIST
-#undef PLAIN_DATE_GETTER_LIST_INTL
-#undef INSTALL_PLAIN_DATE_GETTER_FUNC
-
-#define PLAIN_DATE_FUNC_LIST(V)            \
-  V(toPlainYearMonth, ToPlainYearMonth, 0) \
-  V(toPlainMonthDay, ToPlainMonthDay, 0)   \
-  V(getISOFiels, GetISOFields, 0)          \
-  V(add, Add, 1)                           \
-  V(subtract, Subtract, 1)                 \
-  V(with, With, 1)                         \
-  V(withCalendar, WithCalendar, 1)         \
-  V(until, Until, 1)                       \
-  V(since, Since, 1)                       \
-  V(equals, Equals, 1)                     \
-  V(getISOFields, GetISOFields, 0)         \
-  V(toLocaleString, ToLocaleString, 0)     \
-  V(toPlainDateTime, ToPlainDateTime, 0)   \
-  V(toZonedDateTime, ToZonedDateTime, 1)   \
-  V(toString, ToString, 0)                 \
-  V(toJSON, ToJSON, 0)                     \
-  V(valueOf, ValueOf, 0)
-
-#define INSTALL_PLAIN_DATE_FUNC(p, N, min)      \
-  SimpleInstallFunction(isolate, prototype, #p, \
-                        Builtin::kTemporalPlainDatePrototype##N, min, false);
-    PLAIN_DATE_FUNC_LIST(INSTALL_PLAIN_DATE_FUNC)
-#undef PLAIN_DATE_FUNC_LIST
-#undef INSTALL_PLAIN_DATE_FUNC
+    INSTALL_TEMPORAL_METHOD(PlainDate, toPlainYearMonth, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDate, toPlainMonthDay, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDate, getISOFields, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDate, add, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDate, subtract, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDate, with, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDate, withCalendar, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDate, until, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDate, since, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDate, equals, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDate, toLocaleString, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDate, toPlainDateTime, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDate, toZonedDateTime, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDate, toString, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDate, toJSON, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDate, valueOf, 0)
   }
   {  // -- P l a i n T i m e
      // #sec-temporal-plaintime-objects
      // #sec-temporal.plaintime
     INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(PlainTime, PLAIN_TIME, 0)
-    INSTALL_TEMPORAL_FUNC(PlainTime, from, From, 1)
-    INSTALL_TEMPORAL_FUNC(PlainTime, compare, Compare, 2)
+    INSTALL_TEMPORAL_FUNC(PlainTime, from, 1)
+    INSTALL_TEMPORAL_FUNC(PlainTime, compare, 2)
 
-#define PLAIN_TIME_GETTER_LIST(V) \
-  V(calendar, Calendar)           \
-  V(hour, Hour)                   \
-  V(minute, Minute)               \
-  V(second, Second)               \
-  V(millisecond, Millisecond)     \
-  V(microsecond, Microsecond)     \
-  V(nanosecond, Nanosecond)
+    INSTALL_TEMPORAL_GETTER(PlainTime, calendar)
+    INSTALL_TEMPORAL_GETTER(PlainTime, hour)
+    INSTALL_TEMPORAL_GETTER(PlainTime, minute)
+    INSTALL_TEMPORAL_GETTER(PlainTime, second)
+    INSTALL_TEMPORAL_GETTER(PlainTime, millisecond)
+    INSTALL_TEMPORAL_GETTER(PlainTime, microsecond)
+    INSTALL_TEMPORAL_GETTER(PlainTime, nanosecond)
 
-#define INSTALL_PLAIN_TIME_GETTER_FUNC(p, N)                                \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalPlainTimePrototype##N, true);
-
-    PLAIN_TIME_GETTER_LIST(INSTALL_PLAIN_TIME_GETTER_FUNC)
-#undef PLAIN_TIME_GETTER_LIST
-#undef INSTALL_PLAIN_TIME_GETTER_FUNC
-
-#define PLAIN_TIME_FUNC_LIST(V)          \
-  V(add, Add, 1)                         \
-  V(subtract, Subtract, 1)               \
-  V(with, With, 1)                       \
-  V(until, Until, 1)                     \
-  V(since, Since, 1)                     \
-  V(round, Round, 1)                     \
-  V(equals, Equals, 1)                   \
-  V(toPlainDateTime, ToPlainDateTime, 1) \
-  V(toZonedDateTime, ToZonedDateTime, 1) \
-  V(getISOFields, GetISOFields, 0)       \
-  V(toLocaleString, ToLocaleString, 0)   \
-  V(toString, ToString, 0)               \
-  V(toJSON, ToJSON, 0)                   \
-  V(valueOf, ValueOf, 0)
-
-#define INSTALL_PLAIN_TIME_FUNC(p, N, min)      \
-  SimpleInstallFunction(isolate, prototype, #p, \
-                        Builtin::kTemporalPlainTimePrototype##N, min, false);
-    PLAIN_TIME_FUNC_LIST(INSTALL_PLAIN_TIME_FUNC)
-#undef PLAIN_TIME_FUNC_LIST
-#undef INSTALL_PLAIN_TIME_FUNC
+    INSTALL_TEMPORAL_METHOD(PlainTime, add, 1)
+    INSTALL_TEMPORAL_METHOD(PlainTime, subtract, 1)
+    INSTALL_TEMPORAL_METHOD(PlainTime, with, 1)
+    INSTALL_TEMPORAL_METHOD(PlainTime, until, 1)
+    INSTALL_TEMPORAL_METHOD(PlainTime, since, 1)
+    INSTALL_TEMPORAL_METHOD(PlainTime, round, 1)
+    INSTALL_TEMPORAL_METHOD(PlainTime, equals, 1)
+    INSTALL_TEMPORAL_METHOD(PlainTime, toPlainDateTime, 1)
+    INSTALL_TEMPORAL_METHOD(PlainTime, toZonedDateTime, 1)
+    INSTALL_TEMPORAL_METHOD(PlainTime, getISOFields, 0)
+    INSTALL_TEMPORAL_METHOD(PlainTime, toLocaleString, 0)
+    INSTALL_TEMPORAL_METHOD(PlainTime, toString, 0)
+    INSTALL_TEMPORAL_METHOD(PlainTime, toJSON, 0)
+    INSTALL_TEMPORAL_METHOD(PlainTime, valueOf, 0)
   }
   {  // -- P l a i n D a t e T i m e
     // #sec-temporal-plaindatetime-objects
     // #sec-temporal.plaindatetime
     INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(PlainDateTime, PLAIN_DATE_TIME, 3)
-    INSTALL_TEMPORAL_FUNC(PlainDateTime, from, From, 1)
-    INSTALL_TEMPORAL_FUNC(PlainDateTime, compare, Compare, 2)
+    INSTALL_TEMPORAL_FUNC(PlainDateTime, from, 1)
+    INSTALL_TEMPORAL_FUNC(PlainDateTime, compare, 2)
 
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, calendar)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, year)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, month)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, monthCode)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, day)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, hour)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, minute)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, second)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, millisecond)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, microsecond)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, nanosecond)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, dayOfWeek)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, dayOfYear)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, weekOfYear)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, daysInWeek)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, daysInMonth)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, daysInYear)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, monthsInYear)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, inLeapYear)
 #ifdef V8_INTL_SUPPORT
-#define PLAIN_DATE_TIME_GETTER_LIST_INTL(V) \
-  V(era, Era)                               \
-  V(eraYear, EraYear)
-#else
-#define PLAIN_DATE_TIME_GETTER_LIST_INTL(V)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, era)
+    INSTALL_TEMPORAL_GETTER(PlainDateTime, eraYear)
 #endif  // V8_INTL_SUPPORT
 
-#define PLAIN_DATE_TIME_GETTER_LIST(V) \
-  PLAIN_DATE_TIME_GETTER_LIST_INTL(V)  \
-  V(calendar, Calendar)                \
-  V(year, Year)                        \
-  V(month, Month)                      \
-  V(monthCode, MonthCode)              \
-  V(day, Day)                          \
-  V(hour, Hour)                        \
-  V(minute, Minute)                    \
-  V(second, Second)                    \
-  V(millisecond, Millisecond)          \
-  V(microsecond, Microsecond)          \
-  V(nanosecond, Nanosecond)            \
-  V(dayOfWeek, DayOfWeek)              \
-  V(dayOfYear, DayOfYear)              \
-  V(weekOfYear, WeekOfYear)            \
-  V(daysInWeek, DaysInWeek)            \
-  V(daysInMonth, DaysInMonth)          \
-  V(daysInYear, DaysInYear)            \
-  V(monthsInYear, MonthsInYear)        \
-  V(inLeapYear, InLeapYear)
-
-#define INSTALL_PLAIN_DATE_TIME_GETTER_FUNC(p, N)                           \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalPlainDateTimePrototype##N, true);
-
-    PLAIN_DATE_TIME_GETTER_LIST(INSTALL_PLAIN_DATE_TIME_GETTER_FUNC)
-#undef PLAIN_DATE_TIME_GETTER_LIST
-#undef PLAIN_DATE_TIME_GETTER_LIST_INTL
-#undef INSTALL_PLAIN_DATE_TIME_GETTER_FUNC
-
-#define PLAIN_DATE_TIME_FUNC_LIST(V)       \
-  V(with, With, 1)                         \
-  V(withPlainTime, WithPlainTime, 0)       \
-  V(withPlainDate, WithPlainDate, 1)       \
-  V(withCalendar, WithCalendar, 1)         \
-  V(add, Add, 1)                           \
-  V(subtract, Subtract, 1)                 \
-  V(until, Until, 1)                       \
-  V(since, Since, 1)                       \
-  V(round, Round, 1)                       \
-  V(equals, Equals, 1)                     \
-  V(toLocaleString, ToLocaleString, 0)     \
-  V(toJSON, ToJSON, 0)                     \
-  V(toString, ToString, 0)                 \
-  V(valueOf, ValueOf, 0)                   \
-  V(toZonedDateTime, ToZonedDateTime, 1)   \
-  V(toPlainDate, ToPlainDate, 0)           \
-  V(toPlainYearMonth, ToPlainYearMonth, 0) \
-  V(toPlainMonthDay, ToPlainMonthDay, 0)   \
-  V(toPlainTime, ToPlainTime, 0)           \
-  V(getISOFields, GetISOFields, 0)
-
-#define INSTALL_PLAIN_DATE_TIME_FUNC(p, N, min)                           \
-  SimpleInstallFunction(isolate, prototype, #p,                           \
-                        Builtin::kTemporalPlainDateTimePrototype##N, min, \
-                        false);
-    PLAIN_DATE_TIME_FUNC_LIST(INSTALL_PLAIN_DATE_TIME_FUNC)
-#undef PLAIN_DATE_TIME_FUNC_LIST
-#undef INSTALL_PLAIN_DATE_TIME_FUNC
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, with, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, withPlainTime, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, withPlainDate, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, withCalendar, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, add, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, subtract, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, until, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, since, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, round, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, equals, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, toLocaleString, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, toJSON, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, toString, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, valueOf, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, toZonedDateTime, 1)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, toPlainDate, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, toPlainYearMonth, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, toPlainMonthDay, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, toPlainTime, 0)
+    INSTALL_TEMPORAL_METHOD(PlainDateTime, getISOFields, 0)
   }
   {  // -- Z o n e d D a t e T i m e
     // #sec-temporal-zoneddatetime-objects
     // #sec-temporal.zoneddatetime
     INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(ZonedDateTime, ZONED_DATE_TIME, 2)
-    INSTALL_TEMPORAL_FUNC(ZonedDateTime, from, From, 1)
-    INSTALL_TEMPORAL_FUNC(ZonedDateTime, compare, Compare, 2)
+    INSTALL_TEMPORAL_FUNC(ZonedDateTime, from, 1)
+    INSTALL_TEMPORAL_FUNC(ZonedDateTime, compare, 2)
 
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, calendar)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, timeZone)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, year)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, month)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, monthCode)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, day)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, hour)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, minute)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, second)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, millisecond)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, microsecond)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, nanosecond)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, epochSeconds)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, epochMilliseconds)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, epochMicroseconds)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, epochNanoseconds)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, dayOfWeek)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, dayOfYear)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, weekOfYear)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, hoursInDay)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, daysInWeek)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, daysInMonth)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, daysInYear)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, monthsInYear)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, inLeapYear)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, offsetNanoseconds)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, offset)
 #ifdef V8_INTL_SUPPORT
-#define ZONED_DATE_TIME_GETTER_LIST_INTL(V) \
-  V(era, Era)                               \
-  V(eraYear, EraYear)
-#else
-#define ZONED_DATE_TIME_GETTER_LIST_INTL(V)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, era)
+    INSTALL_TEMPORAL_GETTER(ZonedDateTime, eraYear)
 #endif  // V8_INTL_SUPPORT
 
-#define ZONED_DATE_TIME_GETTER_LIST(V)    \
-  ZONED_DATE_TIME_GETTER_LIST_INTL(V)     \
-  V(calendar, Calendar)                   \
-  V(timeZone, TimeZone)                   \
-  V(year, Year)                           \
-  V(month, Month)                         \
-  V(monthCode, MonthCode)                 \
-  V(day, Day)                             \
-  V(hour, Hour)                           \
-  V(minute, Minute)                       \
-  V(second, Second)                       \
-  V(millisecond, Millisecond)             \
-  V(microsecond, Microsecond)             \
-  V(nanosecond, Nanosecond)               \
-  V(epochSeconds, EpochSeconds)           \
-  V(epochMilliseconds, EpochMilliseconds) \
-  V(epochMicroseconds, EpochMicroseconds) \
-  V(epochNanoseconds, EpochNanoseconds)   \
-  V(dayOfWeek, DayOfWeek)                 \
-  V(dayOfYear, DayOfYear)                 \
-  V(weekOfYear, WeekOfYear)               \
-  V(hoursInDay, HoursInDay)               \
-  V(daysInWeek, DaysInWeek)               \
-  V(daysInMonth, DaysInMonth)             \
-  V(daysInYear, DaysInYear)               \
-  V(monthsInYear, MonthsInYear)           \
-  V(inLeapYear, InLeapYear)               \
-  V(offsetNanoseconds, OffsetNanoseconds) \
-  V(offset, Offset)
-
-#define INSTALL_ZONED_DATE_TIME_GETTER_FUNC(p, N)                           \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalZonedDateTimePrototype##N, true);
-
-    ZONED_DATE_TIME_GETTER_LIST(INSTALL_ZONED_DATE_TIME_GETTER_FUNC)
-#undef ZONED_DATE_TIME_GETTER_LIST
-#undef ZONED_DATE_TIME_GETTER_LIST_INTL
-#undef INSTALL_ZONED_DATE_TIME_GETTER_FUNC
-
-#define ZONED_DATE_TIME_FUNC_LIST(V)       \
-  V(with, With, 1)                         \
-  V(withPlainTime, WithPlainTime, 0)       \
-  V(withPlainDate, WithPlainDate, 1)       \
-  V(withTimeZone, WithTimeZone, 1)         \
-  V(withCalendar, WithCalendar, 1)         \
-  V(add, Add, 1)                           \
-  V(subtract, Subtract, 1)                 \
-  V(until, Until, 1)                       \
-  V(since, Since, 1)                       \
-  V(round, Round, 1)                       \
-  V(equals, Equals, 1)                     \
-  V(toLocaleString, ToLocaleString, 0)     \
-  V(toString, ToString, 0)                 \
-  V(toJSON, ToJSON, 0)                     \
-  V(valueOf, ValueOf, 0)                   \
-  V(startOfDay, StartOfDay, 0)             \
-  V(toInstant, ToInstant, 0)               \
-  V(toPlainDate, ToPlainDate, 0)           \
-  V(toPlainTime, ToPlainTime, 0)           \
-  V(toPlainDateTime, ToPlainDateTime, 0)   \
-  V(toPlainYearMonth, ToPlainYearMonth, 0) \
-  V(toPlainMonthDay, ToPlainMonthDay, 0)   \
-  V(getISOFields, GetISOFields, 0)
-
-#define INSTALL_ZONED_DATE_TIME_FUNC(p, N, min)                           \
-  SimpleInstallFunction(isolate, prototype, #p,                           \
-                        Builtin::kTemporalZonedDateTimePrototype##N, min, \
-                        false);
-    ZONED_DATE_TIME_FUNC_LIST(INSTALL_ZONED_DATE_TIME_FUNC)
-#undef ZONED_DATE_TIME_FUNC_LIST
-#undef INSTALL_ZONED_DATE_TIME_FUNC
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, with, 1)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, withPlainTime, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, withPlainDate, 1)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, withTimeZone, 1)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, withCalendar, 1)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, add, 1)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, subtract, 1)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, until, 1)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, since, 1)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, round, 1)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, equals, 1)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toLocaleString, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toString, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toJSON, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, valueOf, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, startOfDay, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toInstant, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toPlainDate, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toPlainTime, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toPlainDateTime, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toPlainYearMonth, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, toPlainMonthDay, 0)
+    INSTALL_TEMPORAL_METHOD(ZonedDateTime, getISOFields, 0)
   }
   {  // -- D u r a t i o n
     // #sec-temporal-duration-objects
     // #sec-temporal.duration
     INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(Duration, DURATION, 0)
-    INSTALL_TEMPORAL_FUNC(Duration, from, From, 1)
-    INSTALL_TEMPORAL_FUNC(Duration, compare, Compare, 2)
+    INSTALL_TEMPORAL_FUNC(Duration, from, 1)
+    INSTALL_TEMPORAL_FUNC(Duration, compare, 2)
 
-#define DURATION_GETTER_LIST(V) \
-  V(years, Years)               \
-  V(months, Months)             \
-  V(weeks, Weeks)               \
-  V(days, Days)                 \
-  V(hours, Hours)               \
-  V(minutes, Minutes)           \
-  V(seconds, Seconds)           \
-  V(milliseconds, Milliseconds) \
-  V(microseconds, Microseconds) \
-  V(nanoseconds, Nanoseconds)   \
-  V(sign, Sign)                 \
-  V(blank, Blank)
+    INSTALL_TEMPORAL_GETTER(Duration, years)
+    INSTALL_TEMPORAL_GETTER(Duration, months)
+    INSTALL_TEMPORAL_GETTER(Duration, weeks)
+    INSTALL_TEMPORAL_GETTER(Duration, days)
+    INSTALL_TEMPORAL_GETTER(Duration, hours)
+    INSTALL_TEMPORAL_GETTER(Duration, minutes)
+    INSTALL_TEMPORAL_GETTER(Duration, seconds)
+    INSTALL_TEMPORAL_GETTER(Duration, milliseconds)
+    INSTALL_TEMPORAL_GETTER(Duration, microseconds)
+    INSTALL_TEMPORAL_GETTER(Duration, nanoseconds)
+    INSTALL_TEMPORAL_GETTER(Duration, sign)
+    INSTALL_TEMPORAL_GETTER(Duration, blank)
 
-#define INSTALL_DURATION_GETTER_FUNC(p, N)                                  \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalDurationPrototype##N, true);
-
-    DURATION_GETTER_LIST(INSTALL_DURATION_GETTER_FUNC)
-#undef DURATION_GETTER_LIST
-#undef INSTALL_DURATION_GETTER_FUNC
-
-#define DURATION_FUNC_LIST(V)          \
-  V(with, With, 1)                     \
-  V(negated, Negated, 0)               \
-  V(abs, Abs, 0)                       \
-  V(add, Add, 1)                       \
-  V(subtract, Subtract, 1)             \
-  V(round, Round, 1)                   \
-  V(total, Total, 1)                   \
-  V(toLocaleString, ToLocaleString, 0) \
-  V(toString, ToString, 0)             \
-  V(toJSON, ToJSON, 0)                 \
-  V(valueOf, ValueOf, 0)
-
-#define INSTALL_DURATION_FUNC(p, N, min)        \
-  SimpleInstallFunction(isolate, prototype, #p, \
-                        Builtin::kTemporalDurationPrototype##N, min, false);
-    DURATION_FUNC_LIST(INSTALL_DURATION_FUNC)
-#undef DURATION_FUNC_LIST
-#undef INSTALL_DURATION_FUNC
+    INSTALL_TEMPORAL_METHOD(Duration, with, 1)
+    INSTALL_TEMPORAL_METHOD(Duration, negated, 0)
+    INSTALL_TEMPORAL_METHOD(Duration, abs, 0)
+    INSTALL_TEMPORAL_METHOD(Duration, add, 1)
+    INSTALL_TEMPORAL_METHOD(Duration, subtract, 1)
+    INSTALL_TEMPORAL_METHOD(Duration, round, 1)
+    INSTALL_TEMPORAL_METHOD(Duration, total, 1)
+    INSTALL_TEMPORAL_METHOD(Duration, toLocaleString, 0)
+    INSTALL_TEMPORAL_METHOD(Duration, toString, 0)
+    INSTALL_TEMPORAL_METHOD(Duration, toJSON, 0)
+    INSTALL_TEMPORAL_METHOD(Duration, valueOf, 0)
   }
   {  // -- I n s t a n t
     // #sec-temporal-instant-objects
     // #sec-temporal.instant
     INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(Instant, INSTANT, 1)
-    INSTALL_TEMPORAL_FUNC(Instant, from, From, 1)
-    INSTALL_TEMPORAL_FUNC(Instant, compare, Compare, 2)
-    INSTALL_TEMPORAL_FUNC(Instant, fromEpochSeconds, FromEpochSeconds, 1)
-    INSTALL_TEMPORAL_FUNC(Instant, fromEpochMilliseconds, FromEpochMilliseconds,
-                          1)
-    INSTALL_TEMPORAL_FUNC(Instant, fromEpochMicroseconds, FromEpochMicroseconds,
-                          1)
-    INSTALL_TEMPORAL_FUNC(Instant, fromEpochNanoseconds, FromEpochNanoseconds,
-                          1)
+    INSTALL_TEMPORAL_FUNC(Instant, from, 1)
+    INSTALL_TEMPORAL_FUNC(Instant, compare, 2)
+    INSTALL_TEMPORAL_FUNC(Instant, fromEpochSeconds, 1)
+    INSTALL_TEMPORAL_FUNC(Instant, fromEpochMilliseconds, 1)
+    INSTALL_TEMPORAL_FUNC(Instant, fromEpochMicroseconds, 1)
+    INSTALL_TEMPORAL_FUNC(Instant, fromEpochNanoseconds, 1)
 
-#define INSTANT_GETTER_LIST(V)            \
-  V(epochSeconds, EpochSeconds)           \
-  V(epochMilliseconds, EpochMilliseconds) \
-  V(epochMicroseconds, EpochMicroseconds) \
-  V(epochNanoseconds, EpochNanoseconds)
+    INSTALL_TEMPORAL_GETTER(Instant, epochSeconds)
+    INSTALL_TEMPORAL_GETTER(Instant, epochMilliseconds)
+    INSTALL_TEMPORAL_GETTER(Instant, epochMicroseconds)
+    INSTALL_TEMPORAL_GETTER(Instant, epochNanoseconds)
 
-#define INSTALL_INSTANT_GETTER_FUNC(p, N)                                   \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalInstantPrototype##N, true);
-
-    INSTANT_GETTER_LIST(INSTALL_INSTANT_GETTER_FUNC)
-#undef INSTANT_GETTER_LIST
-#undef INSTALL_INSTANT_GETTER_FUNC
-
-#define INSTANT_FUNC_LIST(V)             \
-  V(add, Add, 1)                         \
-  V(subtract, Subtract, 1)               \
-  V(until, Until, 1)                     \
-  V(since, Since, 1)                     \
-  V(round, Round, 1)                     \
-  V(equals, Equals, 1)                   \
-  V(toLocaleString, ToLocaleString, 0)   \
-  V(toString, ToString, 0)               \
-  V(toJSON, ToJSON, 0)                   \
-  V(valueOf, ValueOf, 0)                 \
-  V(toZonedDateTime, ToZonedDateTime, 1) \
-  V(toZonedDateTimeISO, ToZonedDateTimeISO, 1)
-
-#define INSTALL_INSTANT_FUNC(p, N, min)         \
-  SimpleInstallFunction(isolate, prototype, #p, \
-                        Builtin::kTemporalInstantPrototype##N, min, false);
-    INSTANT_FUNC_LIST(INSTALL_INSTANT_FUNC)
-#undef INSTANT_FUNC_LIST
-#undef INSTALL_INSTANT_FUNC
+    INSTALL_TEMPORAL_METHOD(Instant, add, 1)
+    INSTALL_TEMPORAL_METHOD(Instant, subtract, 1)
+    INSTALL_TEMPORAL_METHOD(Instant, until, 1)
+    INSTALL_TEMPORAL_METHOD(Instant, since, 1)
+    INSTALL_TEMPORAL_METHOD(Instant, round, 1)
+    INSTALL_TEMPORAL_METHOD(Instant, equals, 1)
+    INSTALL_TEMPORAL_METHOD(Instant, toLocaleString, 0)
+    INSTALL_TEMPORAL_METHOD(Instant, toString, 0)
+    INSTALL_TEMPORAL_METHOD(Instant, toJSON, 0)
+    INSTALL_TEMPORAL_METHOD(Instant, valueOf, 0)
+    INSTALL_TEMPORAL_METHOD(Instant, toZonedDateTime, 1)
+    INSTALL_TEMPORAL_METHOD(Instant, toZonedDateTimeISO, 1)
   }
   {  // -- P l a i n Y e a r M o n t h
     // #sec-temporal-plainyearmonth-objects
     // #sec-temporal.plainyearmonth
     INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(PlainYearMonth, PLAIN_YEAR_MONTH, 2)
-    INSTALL_TEMPORAL_FUNC(PlainYearMonth, from, From, 1)
-    INSTALL_TEMPORAL_FUNC(PlainYearMonth, compare, Compare, 2)
+    INSTALL_TEMPORAL_FUNC(PlainYearMonth, from, 1)
+    INSTALL_TEMPORAL_FUNC(PlainYearMonth, compare, 2)
 
+    INSTALL_TEMPORAL_GETTER(PlainYearMonth, calendar)
+    INSTALL_TEMPORAL_GETTER(PlainYearMonth, year)
+    INSTALL_TEMPORAL_GETTER(PlainYearMonth, month)
+    INSTALL_TEMPORAL_GETTER(PlainYearMonth, monthCode)
+    INSTALL_TEMPORAL_GETTER(PlainYearMonth, daysInYear)
+    INSTALL_TEMPORAL_GETTER(PlainYearMonth, daysInMonth)
+    INSTALL_TEMPORAL_GETTER(PlainYearMonth, monthsInYear)
+    INSTALL_TEMPORAL_GETTER(PlainYearMonth, inLeapYear)
 #ifdef V8_INTL_SUPPORT
-#define PLAIN_YEAR_MONTH_GETTER_LIST_INTL(V) \
-  V(era, Era)                                \
-  V(eraYear, EraYear)
-#else
-#define PLAIN_YEAR_MONTH_GETTER_LIST_INTL(V)
+    INSTALL_TEMPORAL_GETTER(PlainYearMonth, era)
+    INSTALL_TEMPORAL_GETTER(PlainYearMonth, eraYear)
 #endif  // V8_INTL_SUPPORT
 
-#define PLAIN_YEAR_MONTH_GETTER_LIST(V) \
-  PLAIN_YEAR_MONTH_GETTER_LIST_INTL(V)  \
-  V(calendar, Calendar)                 \
-  V(year, Year)                         \
-  V(month, Month)                       \
-  V(monthCode, MonthCode)               \
-  V(daysInYear, DaysInYear)             \
-  V(daysInMonth, DaysInMonth)           \
-  V(monthsInYear, MonthsInYear)         \
-  V(inLeapYear, InLeapYear)
-
-#define INSTALL_PLAIN_YEAR_MONTH_GETTER_FUNC(p, N)                          \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalPlainYearMonthPrototype##N, true);
-
-    PLAIN_YEAR_MONTH_GETTER_LIST(INSTALL_PLAIN_YEAR_MONTH_GETTER_FUNC)
-#undef PLAIN_YEAR_MONTH_GETTER_LIST
-#undef PLAIN_YEAR_MONTH_GETTER_LIST_INTL
-#undef INSTALL_PLAIN_YEAR_MONTH_GETTER_FUNC
-
-#define PLAIN_YEAR_MONTH_FUNC_LIST(V)  \
-  V(with, With, 1)                     \
-  V(add, Add, 1)                       \
-  V(subtract, Subtract, 1)             \
-  V(until, Until, 1)                   \
-  V(since, Since, 1)                   \
-  V(equals, Equals, 1)                 \
-  V(toLocaleString, ToLocaleString, 0) \
-  V(toString, ToString, 0)             \
-  V(toJSON, ToJSON, 0)                 \
-  V(valueOf, ValueOf, 0)               \
-  V(toPlainDate, ToPlainDate, 1)       \
-  V(getISOFields, GetISOFields, 0)
-
-#define INSTALL_PLAIN_YEAR_MONTH_FUNC(p, N, min)                           \
-  SimpleInstallFunction(isolate, prototype, #p,                            \
-                        Builtin::kTemporalPlainYearMonthPrototype##N, min, \
-                        false);
-    PLAIN_YEAR_MONTH_FUNC_LIST(INSTALL_PLAIN_YEAR_MONTH_FUNC)
-#undef PLAIN_YEAR_MONTH_FUNC_LIST
-#undef INSTALL_PLAIN_YEAR_MONTH_FUNC
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, with, 1)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, add, 1)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, subtract, 1)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, until, 1)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, since, 1)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, equals, 1)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, toLocaleString, 0)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, toString, 0)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, toJSON, 0)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, valueOf, 0)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, toPlainDate, 1)
+    INSTALL_TEMPORAL_METHOD(PlainYearMonth, getISOFields, 0)
   }
   {  // -- P l a i n M o n t h D a y
     // #sec-temporal-plainmonthday-objects
     // #sec-temporal.plainmonthday
     INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(PlainMonthDay, PLAIN_MONTH_DAY, 2)
-    INSTALL_TEMPORAL_FUNC(PlainMonthDay, from, From, 1)
+    INSTALL_TEMPORAL_FUNC(PlainMonthDay, from, 1)
     // Notice there are no Temporal.PlainMonthDay.compare in the spec.
 
-#define PLAIN_MONTH_DAY_GETTER_LIST(V) \
-  V(calendar, Calendar)                \
-  V(monthCode, MonthCode)              \
-  V(day, Day)
+    INSTALL_TEMPORAL_GETTER(PlainMonthDay, calendar)
+    INSTALL_TEMPORAL_GETTER(PlainMonthDay, monthCode)
+    INSTALL_TEMPORAL_GETTER(PlainMonthDay, day)
 
-#define INSTALL_PLAIN_MONTH_DAY_GETTER_FUNC(p, N)                           \
-  SimpleInstallGetter(isolate, prototype, isolate->factory()->p##_string(), \
-                      Builtin::kTemporalPlainMonthDayPrototype##N, true);
-
-    PLAIN_MONTH_DAY_GETTER_LIST(INSTALL_PLAIN_MONTH_DAY_GETTER_FUNC)
-#undef PLAIN_MONTH_DAY_GETTER_LIST
-#undef INSTALL_PLAIN_MONTH_DAY_GETTER_FUNC
-
-#define PLAIN_MONTH_DAY_FUNC_LIST(V)   \
-  V(with, With, 1)                     \
-  V(equals, Equals, 1)                 \
-  V(toLocaleString, ToLocaleString, 0) \
-  V(toString, ToString, 0)             \
-  V(toJSON, ToJSON, 0)                 \
-  V(valueOf, ValueOf, 0)               \
-  V(toPlainDate, ToPlainDate, 1)       \
-  V(getISOFields, GetISOFields, 0)
-
-#define INSTALL_PLAIN_MONTH_DAY_FUNC(p, N, min)                           \
-  SimpleInstallFunction(isolate, prototype, #p,                           \
-                        Builtin::kTemporalPlainMonthDayPrototype##N, min, \
-                        false);
-    PLAIN_MONTH_DAY_FUNC_LIST(INSTALL_PLAIN_MONTH_DAY_FUNC)
-#undef PLAIN_MONTH_DAY_FUNC_LIST
-#undef INSTALL_PLAIN_MONTH_DAY_FUNC
+    INSTALL_TEMPORAL_METHOD(PlainMonthDay, with, 1)
+    INSTALL_TEMPORAL_METHOD(PlainMonthDay, equals, 1)
+    INSTALL_TEMPORAL_METHOD(PlainMonthDay, toLocaleString, 0)
+    INSTALL_TEMPORAL_METHOD(PlainMonthDay, toString, 0)
+    INSTALL_TEMPORAL_METHOD(PlainMonthDay, toJSON, 0)
+    INSTALL_TEMPORAL_METHOD(PlainMonthDay, valueOf, 0)
+    INSTALL_TEMPORAL_METHOD(PlainMonthDay, toPlainDate, 1)
+    INSTALL_TEMPORAL_METHOD(PlainMonthDay, getISOFields, 0)
   }
   {  // -- T i m e Z o n e
     // #sec-temporal-timezone-objects
     // #sec-temporal.timezone
     INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(TimeZone, TIME_ZONE, 1)
-    INSTALL_TEMPORAL_FUNC(TimeZone, from, From, 1)
+    INSTALL_TEMPORAL_FUNC(TimeZone, from, 1)
 
-    // #sec-get-temporal.timezone.prototype.id
-    SimpleInstallGetter(isolate, prototype, isolate->factory()->id_string(),
-                        Builtin::kTemporalTimeZonePrototypeId, true);
+    INSTALL_TEMPORAL_GETTER(TimeZone, id)
 
-#define TIME_ZONE_FUNC_LIST(V)                           \
-  V(getOffsetNanosecondsFor, GetOffsetNanosecondsFor, 1) \
-  V(getOffsetStringFor, GetOffsetStringFor, 1)           \
-  V(getPlainDateTimeFor, GetPlainDateTimeFor, 1)         \
-  V(getInstantFor, GetInstantFor, 1)                     \
-  V(getPossibleInstantsFor, GetPossibleInstantsFor, 1)   \
-  V(getNextTransition, GetNextTransition, 1)             \
-  V(getPreviousTransition, GetPreviousTransition, 1)     \
-  V(toString, ToString, 0)                               \
-  V(toJSON, ToJSON, 0)
-
-#define INSTALL_TIME_ZONE_FUNC(p, N, min)       \
-  SimpleInstallFunction(isolate, prototype, #p, \
-                        Builtin::kTemporalTimeZonePrototype##N, min, false);
-    TIME_ZONE_FUNC_LIST(INSTALL_TIME_ZONE_FUNC)
-#undef TIME_ZONE_FUNC_LIST
-#undef INSTALL_TIME_ZONE_FUNC
+    INSTALL_TEMPORAL_METHOD(TimeZone, getOffsetNanosecondsFor, 1)
+    INSTALL_TEMPORAL_METHOD(TimeZone, getOffsetStringFor, 1)
+    INSTALL_TEMPORAL_METHOD(TimeZone, getPlainDateTimeFor, 1)
+    INSTALL_TEMPORAL_METHOD(TimeZone, getInstantFor, 1)
+    INSTALL_TEMPORAL_METHOD(TimeZone, getPossibleInstantsFor, 1)
+    INSTALL_TEMPORAL_METHOD(TimeZone, getNextTransition, 1)
+    INSTALL_TEMPORAL_METHOD(TimeZone, getPreviousTransition, 1)
+    INSTALL_TEMPORAL_METHOD(TimeZone, toString, 0)
+    INSTALL_TEMPORAL_METHOD(TimeZone, toJSON, 0)
   }
   {  // -- C a l e n d a r
     // #sec-temporal-calendar-objects
     // #sec-temporal.calendar
     INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(Calendar, CALENDAR, 1)
-    INSTALL_TEMPORAL_FUNC(Calendar, from, From, 1)
+    INSTALL_TEMPORAL_FUNC(Calendar, from, 1)
 
-    // #sec-get-temporal.calendar.prototype.id
-    SimpleInstallGetter(isolate, prototype, isolate->factory()->id_string(),
-                        Builtin::kTemporalCalendarPrototypeId, true);
+    INSTALL_TEMPORAL_GETTER(Calendar, id)
 
+    INSTALL_TEMPORAL_METHOD(Calendar, dateFromFields, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, yearMonthFromFields, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, monthDayFromFields, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, dateAdd, 2)
+    INSTALL_TEMPORAL_METHOD(Calendar, dateUntil, 2)
+    INSTALL_TEMPORAL_METHOD(Calendar, year, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, month, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, monthCode, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, day, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, dayOfWeek, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, dayOfYear, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, weekOfYear, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, daysInWeek, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, daysInMonth, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, daysInYear, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, monthsInYear, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, inLeapYear, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, mergeFields, 2)
+    INSTALL_TEMPORAL_METHOD(Calendar, toString, 0)
+    INSTALL_TEMPORAL_METHOD(Calendar, toJSON, 0)
 #ifdef V8_INTL_SUPPORT
-#define CALENDAR_FUNC_LIST_INTL(V) \
-  V(era, Era, 1)                   \
-  V(eraYear, EraYear, 1)
-#else
-#define CALENDAR_FUNC_LIST_INTL(V)
+    INSTALL_TEMPORAL_METHOD(Calendar, era, 1)
+    INSTALL_TEMPORAL_METHOD(Calendar, eraYear, 1)
 #endif  // V8_INTL_SUPPORT
 
-#define CALENDAR_FUNC_LIST(V)                    \
-  CALENDAR_FUNC_LIST_INTL(V)                     \
-  V(dateFromFields, DateFromFields, 1)           \
-  V(yearMonthFromFields, YearMonthFromFields, 1) \
-  V(monthDayFromFields, MonthDayFromFields, 1)   \
-  V(dateAdd, DateAdd, 2)                         \
-  V(dateUntil, DateUntil, 2)                     \
-  V(year, Year, 1)                               \
-  V(month, Month, 1)                             \
-  V(monthCode, MonthCode, 1)                     \
-  V(day, Day, 1)                                 \
-  V(dayOfWeek, DayOfWeek, 1)                     \
-  V(dayOfYear, DayOfYear, 1)                     \
-  V(weekOfYear, WeekOfYear, 1)                   \
-  V(daysInWeek, DaysInWeek, 1)                   \
-  V(daysInMonth, DaysInMonth, 1)                 \
-  V(daysInYear, DaysInYear, 1)                   \
-  V(monthsInYear, MonthsInYear, 1)               \
-  V(inLeapYear, InLeapYear, 1)                   \
-  V(fields, Fields, 1)                           \
-  V(mergeFields, MergeFields, 2)                 \
-  V(toString, ToString, 0)                       \
-  V(toJSON, ToJSON, 0)
-
-#define INSTALL_CALENDAR_FUNC(p, N, min)        \
-  SimpleInstallFunction(isolate, prototype, #p, \
-                        Builtin::kTemporalCalendarPrototype##N, min, false);
-    CALENDAR_FUNC_LIST(INSTALL_CALENDAR_FUNC)
-#undef CALENDAR_FUNC_LIST
-#undef CALENDAR_FUNC_LIST_INTL
-#undef INSTALL_CALENDAE_FUNC
+    SimpleInstallFunction(isolate, prototype, "fields",
+                          Builtin::kTemporalCalendarPrototypeFields, 1, false);
   }
 #undef INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE
 #undef INSTALL_TEMPORAL_FUNC
+#undef INSTALL_TEMPORAL_GETTER
+#undef INSTALL_TEMPORAL_METHOD
 
   // The StringListFromIterable functions is created but not
   // exposed, as it is used internally by CalendarFields.

@@ -602,7 +602,7 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
       DISPATCH_METHOD1(Duration, ToString, toString);
       DISPATCH_METHOD0(Duration, Sign, sign);
       DISPATCH_METHOD0(Duration, Blank, blank);
-      DISPATCH_METHOD2(Duration, Add, add);
+      DISPATCH_METHOD1(Duration, Add, add);
       DISPATCH_METHOD1(Duration, Total, total);
       DISPATCH_METHOD1(Duration, With, with);
       DISPATCH_METHOD0(Duration, ToJSON, toJSON);
@@ -610,7 +610,7 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
       DISPATCH_STRCMP_METHOD1(Duration, Round, round);
       DISPATCH_STRCMP_METHOD0(Duration, Negated, negated);
       DISPATCH_STRCMP_METHOD0(Duration, Abs, abs);
-      DISPATCH_STRCMP_METHOD2(Duration, Subtract, subtract);
+      DISPATCH_STRCMP_METHOD1(Duration, Subtract, subtract);
       DISPATCH_STRCMP_METHOD2(Duration, ToLocaleString, toLocaleString);
       UNREACHABLE();
     }

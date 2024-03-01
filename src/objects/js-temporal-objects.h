@@ -208,12 +208,12 @@ class JSTemporalDuration
   // #sec-temporal.duration.prototype.add
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalDuration> Add(
       Isolate* isolate, Handle<JSTemporalDuration> duration,
-      Handle<Object> other, Handle<Object> options);
+      Handle<Object> other);
 
   // #sec-temporal.duration.prototype.subtract
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalDuration> Subtract(
       Isolate* isolate, Handle<JSTemporalDuration> duration,
-      Handle<Object> other, Handle<Object> options);
+      Handle<Object> other);
 
   // #sec-temporal.duration.prototype.round
   V8_WARN_UNUSED_RESULT static MaybeHandle<JSTemporalDuration> Round(

@@ -268,8 +268,8 @@ V8_WARN_UNUSED_RESULT MaybeHandle<BigInt> AddInstant(
 
 // #sec-temporal-balanceduration
 V8_WARN_UNUSED_RESULT Maybe<TimeDurationRecord> BalanceDuration(
-    Isolate* isolate, Unit largest_unit, Handle<Object> relative_to,
-    const TimeDurationRecord& duration, const char* method_name);
+    Isolate* isolate, Unit largest_unit, const TimeDurationRecord& duration,
+    const char* method_name);
 // The special case of BalanceDuration while the nanosecond is a large value
 // and the rest are 0.
 V8_WARN_UNUSED_RESULT Maybe<TimeDurationRecord> BalanceDuration(
@@ -293,7 +293,6 @@ struct BalancePossiblyInfiniteDurationResult {
 };
 V8_WARN_UNUSED_RESULT Maybe<BalancePossiblyInfiniteDurationResult>
 BalancePossiblyInfiniteDuration(Isolate* isolate, Unit largest_unit,
-                                Handle<Object> relative_to,
                                 const TimeDurationRecord& duration,
                                 const char* method_name);
 
@@ -302,17 +301,8 @@ BalancePossiblyInfiniteDuration(Isolate* isolate, Unit largest_unit,
 // This version has no relative_to.
 V8_WARN_UNUSED_RESULT Maybe<BalancePossiblyInfiniteDurationResult>
 BalancePossiblyInfiniteDuration(Isolate* isolate, Unit largest_unit,
-                                Handle<Object> relative_to, double days,
-                                Handle<BigInt> nanoseconds,
-                                const char* method_name);
-V8_WARN_UNUSED_RESULT Maybe<BalancePossiblyInfiniteDurationResult>
-BalancePossiblyInfiniteDuration(Isolate* isolate, Unit largest_unit,
                                 double days, Handle<BigInt> nanoseconds,
-                                const char* method_name) {
-  return BalancePossiblyInfiniteDuration(isolate, largest_unit,
-                                         isolate->factory()->undefined_value(),
-                                         days, nanoseconds, method_name);
-}
+                                const char* method_name);
 
 V8_WARN_UNUSED_RESULT Maybe<DurationRecord> DifferenceISODateTime(
     Isolate* isolate, const DateTimeRecord& date_time1,
@@ -4858,17 +4848,6 @@ Maybe<DateTimeRecord> AddDateTime(Isolate* isolate,
 
 // #sec-temporal-balanceduration
 Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
-                                          const TimeDurationRecord& duration,
-                                          const char* method_name) {
-  TEMPORAL_ENTER_FUNC();
-
-  // 1. If relativeTo is not present, set relativeTo to undefined.
-  return BalanceDuration(isolate, largest_unit,
-                         isolate->factory()->undefined_value(), duration,
-                         method_name);
-}
-
-Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
                                           Handle<BigInt> nanoseconds,
                                           const char* method_name) {
   // 1. Let balanceResult be ? BalancePossiblyInfiniteDuration(days, hours,
@@ -4908,7 +4887,6 @@ Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
 
 // #sec-temporal-balanceduration
 Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
-                                          Handle<Object> relative_to_obj,
                                           const TimeDurationRecord& value,
                                           const char* method_name) {
   // 1. Let balanceResult be ? BalancePossiblyInfiniteDuration(days, hours,
@@ -4917,7 +4895,7 @@ Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
   BalancePossiblyInfiniteDurationResult balance_result;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, balance_result,
-      BalancePossiblyInfiniteDuration(isolate, largest_unit, relative_to_obj,
+      BalancePossiblyInfiniteDuration(isolate, largest_unit,
                                       value, method_name),
       Nothing<TimeDurationRecord>());
 
@@ -4936,57 +4914,31 @@ Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
 
 // sec-temporal-balancepossiblyinfiniteduration
 Maybe<BalancePossiblyInfiniteDurationResult> BalancePossiblyInfiniteDuration(
-    Isolate* isolate, Unit largest_unit, Handle<Object> relative_to_obj,
+    Isolate* isolate, Unit largest_unit,
     const TimeDurationRecord& value, const char* method_name) {
   TEMPORAL_ENTER_FUNC();
   TimeDurationRecord duration = value;
   Handle<BigInt> nanoseconds;
 
-  // 2. If Type(relativeTo) is Object and relativeTo has an
-  // [[InitializedTemporalZonedDateTime]] internal slot, then
-  if (IsJSTemporalZonedDateTime(*relative_to_obj)) {
-    Handle<JSTemporalZonedDateTime> relative_to =
-        Handle<JSTemporalZonedDateTime>::cast(relative_to_obj);
-    // a. Let endNs be ? AddZonedDateTime(relativeTo.[[Nanoseconds]],
-    // relativeTo.[[TimeZone]], relativeTo.[[Calendar]], 0, 0, 0, days, hours,
-    // minutes, seconds, milliseconds, microseconds, nanoseconds).
-    Handle<BigInt> end_ns;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, end_ns,
-        AddZonedDateTime(isolate, handle(relative_to->nanoseconds(), isolate),
-                         handle(relative_to->time_zone(), isolate),
-                         handle(relative_to->calendar(), isolate),
-                         {0, 0, 0, duration}, method_name),
-        Nothing<BalancePossiblyInfiniteDurationResult>());
-    // b. Set nanoseconds to endNs − relativeTo.[[Nanoseconds]].
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, nanoseconds,
-        BigInt::Subtract(isolate, end_ns,
-                         handle(relative_to->nanoseconds(), isolate)),
-        Nothing<BalancePossiblyInfiniteDurationResult>());
-    // 3. Else,
-  } else {
-    // a. Set nanoseconds to ℤ(! TotalDurationNanoseconds(days, hours, minutes,
-    // seconds, milliseconds, microseconds, nanoseconds, 0)).
-    nanoseconds = TotalDurationNanoseconds(isolate, duration, 0);
-  }
+  // a. Set nanoseconds to ℤ(! TotalDurationNanoseconds(days, hours, minutes,
+  // seconds, milliseconds, microseconds, nanoseconds, 0)).
+  nanoseconds = TotalDurationNanoseconds(isolate, duration, 0);
 
   // Call the BigInt version for the same process after step 4
   // The only value need to pass in is nanoseconds and days because
   // 1) step 4 and 5 use nanoseconds and days only, and
   // 2) step 6 is "Set hours, minutes, seconds, milliseconds, and microseconds
   // to 0."
-  return BalancePossiblyInfiniteDuration(isolate, largest_unit, relative_to_obj,
-                                         duration.days, nanoseconds,
-                                         method_name);
+  return BalancePossiblyInfiniteDuration(isolate, largest_unit, duration.days,
+                                         nanoseconds, method_name);
 }
 
 // The special case of BalancePossiblyInfiniteDuration while the nanosecond is a
 // large value and days contains non-zero values but the rest are 0.
 // This version has no relative_to.
 Maybe<BalancePossiblyInfiniteDurationResult> BalancePossiblyInfiniteDuration(
-    Isolate* isolate, Unit largest_unit, Handle<Object> relative_to_obj,
-    double days, Handle<BigInt> nanoseconds, const char* method_name) {
+    Isolate* isolate, Unit largest_unit, double days,
+    Handle<BigInt> nanoseconds, const char* method_name) {
   TEMPORAL_ENTER_FUNC();
 
   // 4. If largestUnit is one of "year", "month", "week", or "day", then
@@ -4996,7 +4948,8 @@ Maybe<BalancePossiblyInfiniteDurationResult> BalancePossiblyInfiniteDuration(
     NanosecondsToDaysResult result;
     MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
         isolate, result,
-        NanosecondsToDays(isolate, nanoseconds, relative_to_obj, method_name),
+        NanosecondsToDays(isolate, nanoseconds,
+                          isolate->factory()->undefined_value(), method_name),
         Nothing<BalancePossiblyInfiniteDurationResult>());
     // b. Set days to result.[[Days]].
     days = result.days;
@@ -6260,130 +6213,7 @@ Maybe<DurationRecord> DifferenceZonedDateTime(
 // #sec-temporal-addduration
 Maybe<DurationRecord> AddDuration(Isolate* isolate, const DurationRecord& dur1,
                                   const DurationRecord& dur2,
-                                  Handle<Object> relative_to_obj,
                                   const char* method_name);
-
-// #sec-temporal-adjustroundeddurationdays
-Maybe<DurationRecord> AdjustRoundedDurationDays(Isolate* isolate,
-                                                const DurationRecord& duration,
-                                                double increment, Unit unit,
-                                                RoundingMode rounding_mode,
-                                                Handle<Object> relative_to_obj,
-                                                const char* method_name) {
-  // 1. If Type(relativeTo) is not Object; or relativeTo does not have an
-  // [[InitializedTemporalZonedDateTime]] internal slot; or unit is one of
-  // "year", "month", "week", or "day"; or unit is "nanosecond" and increment is
-  // 1, then
-  if (!IsJSTemporalZonedDateTime(*relative_to_obj) ||
-      (unit == Unit::kYear || unit == Unit::kMonth || unit == Unit::kWeek ||
-       unit == Unit::kDay) ||
-      (unit == Unit::kNanosecond && increment == 1)) {
-    // a. Return ! CreateDurationRecord(years, months, weeks, days, hours,
-    // minutes, seconds, milliseconds, microseconds, nanoseconds).
-    return Just(CreateDurationRecord(isolate, duration).ToChecked());
-  }
-  Handle<JSTemporalZonedDateTime> relative_to =
-      Handle<JSTemporalZonedDateTime>::cast(relative_to_obj);
-  // 2. Let timeRemainderNs be ! TotalDurationNanoseconds(0, hours, minutes,
-  // seconds, milliseconds, microseconds, nanoseconds, 0).
-  Handle<BigInt> time_remainder_ns = TotalDurationNanoseconds(
-      isolate,
-      {0, duration.time_duration.hours, duration.time_duration.minutes,
-       duration.time_duration.seconds, duration.time_duration.milliseconds,
-       duration.time_duration.microseconds, duration.time_duration.nanoseconds},
-      0);
-
-  ComparisonResult compare =
-      BigInt::CompareToNumber(time_remainder_ns, handle(Smi::zero(), isolate));
-  double direction;
-  // 3. If timeRemainderNs = 0, let direction be 0.
-  if (compare == ComparisonResult::kEqual) {
-    direction = 0;
-    // 4. Else if timeRemainderNs < 0, let direction be -1.
-  } else if (compare == ComparisonResult::kLessThan) {
-    direction = -1;
-    // 5. Else, let direction be 1.
-  } else {
-    direction = 1;
-  }
-
-  // 6. Let dayStart be ? AddZonedDateTime(relativeTo.[[Nanoseconds]],
-  // relativeTo.[[TimeZone]], relativeTo.[[Calendar]], years, months, weeks,
-  // days, 0, 0, 0, 0, 0, 0).
-  Handle<BigInt> day_start;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, day_start,
-      AddZonedDateTime(isolate, handle(relative_to->nanoseconds(), isolate),
-                       handle(relative_to->time_zone(), isolate),
-                       handle(relative_to->calendar(), isolate),
-                       {duration.years,
-                        duration.months,
-                        duration.weeks,
-                        {duration.time_duration.days, 0, 0, 0, 0, 0, 0}},
-                       method_name),
-      Nothing<DurationRecord>());
-  // 7. Let dayEnd be ? AddZonedDateTime(dayStart, relativeTo.[[TimeZone]],
-  // relativeTo.[[Calendar]], 0, 0, 0, direction, 0, 0, 0, 0, 0, 0).
-  Handle<BigInt> day_end;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, day_end,
-      AddZonedDateTime(isolate, day_start,
-                       handle(relative_to->time_zone(), isolate),
-                       handle(relative_to->calendar(), isolate),
-                       {0, 0, 0, {direction, 0, 0, 0, 0, 0, 0}}, method_name),
-      Nothing<DurationRecord>());
-  // 8. Let dayLengthNs be ℝ(dayEnd - dayStart).
-  Handle<BigInt> day_length_ns =
-      BigInt::Subtract(isolate, day_end, day_start).ToHandleChecked();
-  // 9. If (timeRemainderNs - dayLengthNs) × direction < 0, then
-  Handle<BigInt> time_remainder_ns_minus_day_length_ns =
-      BigInt::Subtract(isolate, time_remainder_ns, day_length_ns)
-          .ToHandleChecked();
-
-  if (time_remainder_ns_minus_day_length_ns->AsInt64() * direction < 0) {
-    // a. Return ! CreateDurationRecord(years, months, weeks, days, hours,
-    // minutes, seconds, milliseconds, microseconds, nanoseconds).
-    return Just(CreateDurationRecord(isolate, duration).ToChecked());
-  }
-  // 10. Set timeRemainderNs to ! RoundTemporalInstant(ℤ(timeRemainderNs -
-  // dayLengthNs), increment, unit, roundingMode).
-  time_remainder_ns =
-      RoundTemporalInstant(isolate, time_remainder_ns_minus_day_length_ns,
-                           increment, unit, rounding_mode);
-  // 11. Let adjustedDateDuration be ? AddDuration(years, months, weeks, days,
-  // 0, 0, 0, 0, 0, 0, 0, 0, 0, direction, 0, 0, 0, 0, 0, 0, relativeTo).
-  DurationRecord adjusted_date_duration;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, adjusted_date_duration,
-      AddDuration(isolate,
-                  {duration.years,
-                   duration.months,
-                   duration.weeks,
-                   {duration.time_duration.days, 0, 0, 0, 0, 0, 0}},
-                  {0, 0, 0, {direction, 0, 0, 0, 0, 0, 0}}, relative_to,
-                  method_name),
-      Nothing<DurationRecord>());
-  // 12. Let adjustedTimeDuration be ? BalanceDuration(0, 0, 0, 0, 0, 0,
-  // timeRemainderNs, "hour").
-  TimeDurationRecord adjusted_time_duration;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, adjusted_time_duration,
-      BalanceDuration(isolate, Unit::kHour, time_remainder_ns, method_name),
-      Nothing<DurationRecord>());
-  // 13. Return ! CreateDurationRecord(adjustedDateDuration.[[Years]],
-  // adjustedDateDuration.[[Months]], adjustedDateDuration.[[Weeks]],
-  // adjustedDateDuration.[[Days]], adjustedTimeDuration.[[Hours]],
-  // adjustedTimeDuration.[[Minutes]], adjustedTimeDuration.[[Seconds]],
-  // adjustedTimeDuration.[[Milliseconds]],
-  // adjustedTimeDuration.[[Microseconds]],
-  // adjustedTimeDuration.[[Nanoseconds]]).
-  adjusted_time_duration.days = adjusted_date_duration.time_duration.days;
-  return Just(
-      CreateDurationRecord(
-          isolate, {adjusted_date_duration.years, adjusted_date_duration.months,
-                    adjusted_date_duration.weeks, adjusted_time_duration})
-          .ToChecked());
-}
 
 // #sec-temporal-calculateoffsetshift
 Maybe<int64_t> CalculateOffsetShift(Isolate* isolate,
@@ -6673,270 +6503,6 @@ Maybe<DateDurationRecord> UnbalanceDurationRelative(
                                     result.weeks, result.days);
 }
 
-// #sec-temporal-balancedurationrelative
-Maybe<DateDurationRecord> BalanceDurationRelative(
-    Isolate* isolate, const DateDurationRecord& dur, Unit largest_unit,
-    Handle<Object> relative_to_obj, const char* method_name) {
-  TEMPORAL_ENTER_FUNC();
-
-  Factory* factory = isolate->factory();
-  // 1. If largestUnit is not one of "year", "month", or "week", or years,
-  // months, weeks, and days are all 0, then
-
-  if ((largest_unit != Unit::kYear && largest_unit != Unit::kMonth &&
-       largest_unit != Unit::kWeek) ||
-      (dur.years == 0 && dur.months == 0 && dur.weeks == 0 && dur.days == 0)) {
-    // a. Return ! CreateDateDurationRecord(years, months, weeks, days).
-    return Just(DateDurationRecord::Create(isolate, dur.years, dur.months,
-                                           dur.weeks, dur.days)
-                    .ToChecked());
-  }
-  // 2. If relativeTo is undefined, then
-  if (IsUndefined(*relative_to_obj)) {
-    // a. Throw a RangeError exception.
-    THROW_NEW_ERROR_RETURN_VALUE(isolate,
-                                 NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
-                                 Nothing<DateDurationRecord>());
-  }
-
-  // 3. Let sign be ! DurationSign(years, months, weeks, days, 0, 0, 0, 0, 0,
-  // 0).
-  double sign = DurationSign(
-      isolate,
-      {dur.years, dur.months, dur.weeks, {dur.days, 0, 0, 0, 0, 0, 0}});
-  // 4. Assert: sign ≠ 0.
-  DCHECK_NE(sign, 0);
-  // 5. Let oneYear be ! CreateTemporalDuration(sign, 0, 0, 0, 0, 0, 0, 0, 0,
-  // 0).
-  Handle<JSTemporalDuration> one_year =
-      CreateTemporalDuration(isolate, {sign, 0, 0, {0, 0, 0, 0, 0, 0, 0}})
-          .ToHandleChecked();
-  // 6. Let oneMonth be ! CreateTemporalDuration(0, sign, 0, 0, 0, 0, 0, 0, 0,
-  // 0).
-  Handle<JSTemporalDuration> one_month =
-      CreateTemporalDuration(isolate, {0, sign, 0, {0, 0, 0, 0, 0, 0, 0}})
-          .ToHandleChecked();
-  // 7. Let oneWeek be ! CreateTemporalDuration(0, 0, sign, 0, 0, 0, 0, 0, 0,
-  // 0).
-  Handle<JSTemporalDuration> one_week =
-      CreateTemporalDuration(isolate, {0, 0, sign, {0, 0, 0, 0, 0, 0, 0}})
-          .ToHandleChecked();
-  // 8. Set relativeTo to ? ToTemporalDate(relativeTo).
-  Handle<JSTemporalPlainDate> relative_to;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, relative_to,
-      ToTemporalDate(isolate, relative_to_obj, method_name),
-      Nothing<DateDurationRecord>());
-  // 9. Let calendar be relativeTo.[[Calendar]].
-  Handle<JSReceiver> calendar(relative_to->calendar(), isolate);
-
-  DateDurationRecord result = dur;
-  // 10.  If largestUnit is "year", then
-  if (largest_unit == Unit::kYear) {
-    // a. Let moveResult be ? MoveRelativeDate(calendar, relativeTo, oneYear).
-    MoveRelativeDateResult move_result;
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, move_result,
-        MoveRelativeDate(isolate, calendar, relative_to, one_year, method_name),
-        Nothing<DateDurationRecord>());
-    // b. Let newRelativeTo be moveResult.[[RelativeTo]].
-    Handle<JSTemporalPlainDate> new_relative_to = move_result.relative_to;
-    // c. Let oneYearDays be moveResult.[[Days]].
-    double one_year_days = move_result.days;
-    // d. Repeat, while abs(days) ≥ abs(oneYearDays),
-    while (std::abs(result.days) >= std::abs(one_year_days)) {
-      // i. Set days to days - oneYearDays.
-      result.days -= one_year_days;
-      // ii. Set years to years + sign.
-      result.years += sign;
-      // iii. Set relativeTo to newRelativeTo.
-      relative_to = new_relative_to;
-      // iv. Set moveResult to ? MoveRelativeDate(calendar, relativeTo,
-      // oneYear).
-      MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, move_result,
-          MoveRelativeDate(isolate, calendar, relative_to, one_year,
-                           method_name),
-          Nothing<DateDurationRecord>());
-
-      // iv. Set newRelativeTo to moveResult.[[RelativeTo]].
-      new_relative_to = move_result.relative_to;
-      // v. Set oneYearDays to moveResult.[[Days]].
-      one_year_days = move_result.days;
-    }
-    // e. Set moveResult to ? MoveRelativeDate(calendar, relativeTo, oneMonth).
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, move_result,
-        MoveRelativeDate(isolate, calendar, relative_to, one_month,
-                         method_name),
-        Nothing<DateDurationRecord>());
-    // f. Set newRelativeTo to moveResult.[[RelativeTo]].
-    new_relative_to = move_result.relative_to;
-    // g. Let oneMonthDays be moveResult.[[Days]].
-    double one_month_days = move_result.days;
-    // h. Repeat, while abs(days) ≥ abs(oneMonthDays),
-    while (std::abs(result.days) >= std::abs(one_month_days)) {
-      // i. Set days to days - oneMonthDays.
-      result.days -= one_month_days;
-      // ii. Set months to months + sign.
-      result.months += sign;
-      // iii. Set relativeTo to newRelativeTo.
-      relative_to = new_relative_to;
-      // iv. Set moveResult to ? MoveRelativeDate(calendar, relativeTo,
-      // oneMonth).
-      MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, move_result,
-          MoveRelativeDate(isolate, calendar, relative_to, one_month,
-                           method_name),
-          Nothing<DateDurationRecord>());
-      // iv. Set newRrelativeTo to moveResult.[[RelativeTo]].
-      new_relative_to = move_result.relative_to;
-      // v. Set oneMonthDays to moveResult.[[Days]].
-      one_month_days = move_result.days;
-    }
-    // i. Let dateAdd be ? GetMethod(calendar, "dateAdd").
-    Handle<Object> date_add;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, date_add,
-        Object::GetMethod(isolate, calendar, factory->dateAdd_string()),
-        Nothing<DateDurationRecord>());
-    // j. Set newRelativeTo be ? CalendarDateAdd(calendar, relativeTo, oneYear,
-    // undefined, dateAdd).
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, new_relative_to,
-        CalendarDateAdd(isolate, calendar, relative_to, one_year,
-                        factory->undefined_value(), date_add),
-        Nothing<DateDurationRecord>());
-    // k. Let dateUntil be ? GetMethod(calendar, "dateUntil").
-    Handle<Object> date_until;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, date_until,
-        Object::GetMethod(isolate, calendar, factory->dateUntil_string()),
-        Nothing<DateDurationRecord>());
-    // l. Let untilOptions be OrdinaryObjectCreate(null).
-    Handle<JSObject> until_options = factory->NewJSObjectWithNullProto();
-    // m. Perform ! CreateDataPropertyOrThrow(untilOptions, "largestUnit",
-    // "month").
-    CHECK(JSReceiver::CreateDataProperty(
-              isolate, until_options, factory->largestUnit_string(),
-              factory->month_string(), Just(kThrowOnError))
-              .FromJust());
-    // n. Let untilResult be ? CalendarDateUntil(calendar, relativeTo,
-    // newRelativeTo, untilOptions, dateUntil).
-    Handle<JSTemporalDuration> until_result;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, until_result,
-        CalendarDateUntil(isolate, calendar, relative_to, new_relative_to,
-                          until_options, date_until),
-        Nothing<DateDurationRecord>());
-    // o. Let oneYearMonths be untilResult.[[Months]].
-    double one_year_months = Object::Number(until_result->months());
-    // p. Repeat, while abs(months) ≥ abs(oneYearMonths),
-    while (std::abs(result.months) >= std::abs(one_year_months)) {
-      // i. Set months to months - oneYearMonths.
-      result.months -= one_year_months;
-      // ii. Set years to years + sign.
-      result.years += sign;
-      // iii. Set relativeTo to newRelativeTo.
-      relative_to = new_relative_to;
-      // iv. Set newRelativeTo to ? CalendarDateAdd(calendar, relativeTo,
-      // oneYear, undefined, dateAdd).
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, new_relative_to,
-          CalendarDateAdd(isolate, calendar, relative_to, one_year,
-                          factory->undefined_value(), date_add),
-          Nothing<DateDurationRecord>());
-      // v. Set untilOptions to OrdinaryObjectCreate(null).
-      until_options = factory->NewJSObjectWithNullProto();
-      // vi. Perform ! CreateDataPropertyOrThrow(untilOptions, "largestUnit",
-      // "month").
-      CHECK(JSReceiver::CreateDataProperty(
-                isolate, until_options, factory->largestUnit_string(),
-                factory->month_string(), Just(kThrowOnError))
-                .FromJust());
-      // vii. Set untilResult to ? CalendarDateUntil(calendar, relativeTo,
-      // newRelativeTo, untilOptions, dateUntil).
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, until_result,
-          CalendarDateUntil(isolate, calendar, relative_to, new_relative_to,
-                            until_options, date_until),
-          Nothing<DateDurationRecord>());
-      // viii. Set oneYearMonths to untilResult.[[Months]].
-      one_year_months = Object::Number(until_result->months());
-    }
-    // 11. Else if largestUnit is "month", then
-  } else if (largest_unit == Unit::kMonth) {
-    // a. Let moveResult be ? MoveRelativeDate(calendar, relativeTo, oneMonth).
-    MoveRelativeDateResult move_result;
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, move_result,
-        MoveRelativeDate(isolate, calendar, relative_to, one_month,
-                         method_name),
-        Nothing<DateDurationRecord>());
-    // b. Let newRelativeTo be moveResult.[[RelativeTo]].
-    Handle<JSTemporalPlainDate> new_relative_to = move_result.relative_to;
-    // c. Let oneMonthDays be moveResult.[[Days]].
-    double one_month_days = move_result.days;
-    // d. Repeat, while abs(days) ≥ abs(oneMonthDays),
-    while (std::abs(result.days) >= std::abs(one_month_days)) {
-      // i. Set days to days - oneMonthDays.
-      result.days -= one_month_days;
-      // ii. Set months to months + sign.
-      result.months += sign;
-      // iii. Set relativeTo to newRelativeTo.
-      relative_to = new_relative_to;
-      // iv. Set moveResult to ? MoveRelativeDate(calendar, relativeTo,
-      // oneMonth).
-      MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, move_result,
-          MoveRelativeDate(isolate, calendar, relative_to, one_month,
-                           method_name),
-          Nothing<DateDurationRecord>());
-      // v. Set newRelativeTo to moveResult.[[RelativeTo]].
-      new_relative_to = move_result.relative_to;
-      // vi. Set oneMonthDays to moveResult.[[Days]].
-      one_month_days = move_result.days;
-    }
-    // 12. Else
-  } else {
-    // a. Assert: largestUnit is "week".
-    DCHECK_EQ(largest_unit, Unit::kWeek);
-    // b. Let moveResult be ? MoveRelativeDate(calendar, relativeTo, oneWeek).
-    MoveRelativeDateResult move_result;
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, move_result,
-        MoveRelativeDate(isolate, calendar, relative_to, one_week, method_name),
-        Nothing<DateDurationRecord>());
-    // c. Let newRelativeTo be moveResult.[[RelativeTo]].
-    Handle<JSTemporalPlainDate> new_relative_to = move_result.relative_to;
-    // d. Let oneWeekDays be moveResult.[[Days]].
-    double one_week_days = move_result.days;
-    // e. Repeat, while abs(days) ≥ abs(oneWeekDays),
-    while (std::abs(result.days) >= std::abs(one_week_days)) {
-      // i. Set days to days - oneWeekDays.
-      result.days -= one_week_days;
-      // ii. Set weeks to weeks + sign.
-      result.weeks += sign;
-      // iii. Set relativeTo to newRelativeTo.
-      relative_to = new_relative_to;
-      // v. Set moveResult to ? MoveRelativeDate(calendar, relativeTo,
-      // oneWeek).
-      MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, move_result,
-          MoveRelativeDate(isolate, calendar, relative_to, one_week,
-                           method_name),
-          Nothing<DateDurationRecord>());
-      // v. Set newRelativeTo to moveResult.[[RelativeTo]].
-      new_relative_to = move_result.relative_to;
-      // vi. Set oneWeekDays to moveResult.[[Days]].
-      one_week_days = move_result.days;
-    }
-  }
-  // 12. Return ? CreateDateDurationRecord(years, months, weeks, days).
-  return DateDurationRecord::Create(isolate, result.years, result.months,
-                                    result.weeks, result.days);
-}
-
 }  // namespace
 
 // #sec-temporal.duration.compare
@@ -7100,17 +6666,11 @@ Maybe<double> ToTemporalRoundingIncrement(Isolate* isolate,
                                           bool dividend_is_defined,
                                           bool inclusive);
 
-// #sec-temporal-moverelativezoneddatetime
-MaybeHandle<JSTemporalZonedDateTime> MoveRelativeZonedDateTime(
-    Isolate* isolate, Handle<JSTemporalZonedDateTime> zoned_date_time,
-    const DateDurationRecord& duration, const char* method_name);
-
 // #sec-temporal-roundduration
 Maybe<DurationRecordWithRemainder> RoundDuration(Isolate* isolate,
                                                  const DurationRecord& duration,
                                                  double increment, Unit unit,
                                                  RoundingMode rounding_mode,
-                                                 Handle<Object> relative_to,
                                                  const char* method_name);
 }  // namespace
 
@@ -7237,25 +6797,22 @@ MaybeHandle<JSTemporalDuration> JSTemporalDuration::Round(
       ToTemporalRoundingIncrement(isolate, round_to, maximum.value,
                                   maximum.defined, false),
       Handle<JSTemporalDuration>());
-  // 20. Let relativeTo be ? ToRelativeTemporalObject(roundTo).
-  Handle<Object> relative_to;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, relative_to,
-      ToRelativeTemporalObject(isolate, round_to, method_name),
-      JSTemporalDuration);
+
   // 21. Let unbalanceResult be ? UnbalanceDurationRelative(duration.[[Years]],
   // duration.[[Months]], duration.[[Weeks]], duration.[[Days]], largestUnit,
   // relativeTo).
-  DateDurationRecord unbalance_result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, unbalance_result,
-      UnbalanceDurationRelative(
-          isolate,
-          {Object::Number(duration->years()),
-           Object::Number(duration->months()),
-           Object::Number(duration->weeks()), Object::Number(duration->days())},
-          largest_unit, relative_to, method_name),
-      Handle<JSTemporalDuration>());
+  DateDurationRecord unbalance_result{Object::Number(duration->years()),
+    Object::Number(duration->months()), Object::Number(duration->weeks()),
+    Object::Number(duration->days())};
+  if (largest_unit == Unit::kYear || largest_unit == Unit::kMonth ||
+      largest_unit == Unit::kWeek || smallest_unit == Unit::kYear ||
+      smallest_unit == Unit::kMonth || smallest_unit == Unit::kWeek ||
+      unbalance_result.years != 0 || unbalance_result.months != 0 ||
+      unbalance_result.weeks != 0) {
+    THROW_NEW_ERROR_RETURN_VALUE(isolate,
+                                 NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
+                                 MaybeHandle<JSTemporalDuration>{});      
+  }
   // 22. Let roundResult be (? RoundDuration(unbalanceResult.[[Years]],
   // unbalanceResult.[[Months]], unbalanceResult.[[Weeks]],
   // unbalanceResult.[[Days]], duration.[[Hours]], duration.[[Minutes]],
@@ -7276,7 +6833,7 @@ MaybeHandle<JSTemporalDuration> JSTemporalDuration::Round(
                       Object::Number(duration->microseconds()),
                       Object::Number(duration->nanoseconds())}},
                     rounding_increment, smallest_unit, rounding_mode,
-                    relative_to, method_name),
+                    method_name),
       Handle<JSTemporalDuration>());
 
   // 23. Let adjustResult be ? AdjustRoundedDurationDays(roundResult.[[Years]],
@@ -7285,40 +6842,17 @@ MaybeHandle<JSTemporalDuration> JSTemporalDuration::Round(
   // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
   // roundResult.[[Nanoseconds]], roundingIncrement, smallestUnit, roundingMode,
   // relativeTo).
-  DurationRecord adjust_result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, adjust_result,
-      AdjustRoundedDurationDays(isolate, round_result.record,
-                                rounding_increment, smallest_unit,
-                                rounding_mode, relative_to, method_name),
-      Handle<JSTemporalDuration>());
   // 24. Let balanceResult be ? BalanceDurationRelative(adjustResult.[[Years]],
   // adjustResult.[[Months]], adjustResult.[[Weeks]], adjustResult.[[Days]],
   // largestUnit, relativeTo).
-  DateDurationRecord balance_result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, balance_result,
-      BalanceDurationRelative(
-          isolate,
-          {adjust_result.years, adjust_result.months, adjust_result.weeks,
-           adjust_result.time_duration.days},
-          largest_unit, relative_to, method_name),
-      Handle<JSTemporalDuration>());
-  // 25. If Type(relativeTo) is Object and relativeTo has an
-  // [[InitializedTemporalZonedDateTime]] internal slot, then
-  if (IsJSTemporalZonedDateTime(*relative_to)) {
-    // a. Set relativeTo to ? MoveRelativeZonedDateTime(relativeTo,
-    // balanceResult.[[Years]], balanceResult.[[Months]],
-    // balanceResult.[[Weeks]], 0).
-    ASSIGN_RETURN_ON_EXCEPTION(
-        isolate, relative_to,
-        MoveRelativeZonedDateTime(
-            isolate, Handle<JSTemporalZonedDateTime>::cast(relative_to),
-            {balance_result.years, balance_result.months, balance_result.weeks,
-             0},
-            method_name),
-        JSTemporalDuration);
+  if (round_result.record.years != 0 ||
+      round_result.record.months != 0 || round_result.record.weeks != 0) {
+    // a. Throw a RangeError exception.
+    THROW_NEW_ERROR_RETURN_VALUE(isolate,
+                                 NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
+                                 MaybeHandle<JSTemporalDuration>{});
   }
+
   // 26. Let result be ? BalanceDuration(balanceResult.[[Days]],
   // adjustResult.[[Hours]], adjustResult.[[Minutes]], adjustResult.[[Seconds]],
   // adjustResult.[[Milliseconds]], adjustResult.[[Microseconds]],
@@ -7326,22 +6860,15 @@ MaybeHandle<JSTemporalDuration> JSTemporalDuration::Round(
   TimeDurationRecord result;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, result,
-      BalanceDuration(isolate, largest_unit, relative_to,
-                      {balance_result.days, adjust_result.time_duration.hours,
-                       adjust_result.time_duration.minutes,
-                       adjust_result.time_duration.seconds,
-                       adjust_result.time_duration.milliseconds,
-                       adjust_result.time_duration.microseconds,
-                       adjust_result.time_duration.nanoseconds},
+      BalanceDuration(isolate, largest_unit,
+                      round_result.record.time_duration,
                       method_name),
       Handle<JSTemporalDuration>());
   // 27. Return ! CreateTemporalDuration(balanceResult.[[Years]],
   // balanceResult.[[Months]], balanceResult.[[Weeks]], result.[[Days]],
   // result.[[Hours]], result.[[Minutes]], result.[[Seconds]],
   // result.[[Milliseconds]], result.[[Microseconds]], result.[[Nanoseconds]]).
-  return CreateTemporalDuration(isolate,
-                                {balance_result.years, balance_result.months,
-                                 balance_result.weeks, result})
+  return CreateTemporalDuration(isolate, {0, 0, 0, result})
       .ToHandleChecked();
 }
 
@@ -7378,11 +6905,6 @@ MaybeHandle<Object> JSTemporalDuration::Total(
         Object);
   }
 
-  // 6. Let relativeTo be ? ToRelativeTemporalObject(totalOf).
-  Handle<Object> relative_to;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, relative_to,
-      ToRelativeTemporalObject(isolate, total_of, method_name), Object);
   // 7. Let unit be ? GetTemporalUnit(totalOf, "unit", datetime, required).
   Unit unit;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
@@ -7393,34 +6915,15 @@ MaybeHandle<Object> JSTemporalDuration::Total(
   // 8. Let unbalanceResult be ? UnbalanceDurationRelative(duration.[[Years]],
   // duration.[[Months]], duration.[[Weeks]], duration.[[Days]], unit,
   // relativeTo).
-  DateDurationRecord unbalance_result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, unbalance_result,
-      UnbalanceDurationRelative(
-          isolate,
-          {Object::Number(duration->years()),
-           Object::Number(duration->months()),
-           Object::Number(duration->weeks()), Object::Number(duration->days())},
-          unit, relative_to, method_name),
-      Handle<Object>());
-
-  // 9. Let intermediate be undefined.
-  Handle<Object> intermediate = factory->undefined_value();
-
-  // 8. If relativeTo has an [[InitializedTemporalZonedDateTime]] internal slot,
-  // then
-  if (IsJSTemporalZonedDateTime(*relative_to)) {
-    // a. Set intermediate to ? MoveRelativeZonedDateTime(relativeTo,
-    // unbalanceResult.[[Years]], unbalanceResult.[[Months]],
-    // unbalanceResult.[[Weeks]], 0).
-    ASSIGN_RETURN_ON_EXCEPTION(
-        isolate, intermediate,
-        MoveRelativeZonedDateTime(
-            isolate, Handle<JSTemporalZonedDateTime>::cast(relative_to),
-            {unbalance_result.years, unbalance_result.months,
-             unbalance_result.weeks, 0},
-            method_name),
-        Object);
+  DateDurationRecord unbalance_result{Object::Number(duration->years()),
+    Object::Number(duration->months()), Object::Number(duration->weeks()),
+    Object::Number(duration->days())};
+  if (unit == Unit::kYear || unit == Unit::kMonth || unit == Unit::kWeek || 
+      unbalance_result.years != 0 || unbalance_result.months != 0 ||
+      unbalance_result.weeks != 0) {
+    THROW_NEW_ERROR_RETURN_VALUE(isolate,
+                                 NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
+                                 MaybeHandle<JSTemporalDuration>{});      
   }
 
   // 11. Let balanceResult be ?
@@ -7432,7 +6935,7 @@ MaybeHandle<Object> JSTemporalDuration::Total(
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, balance_result,
       BalancePossiblyInfiniteDuration(
-          isolate, unit, intermediate,
+          isolate, unit,
           {unbalance_result.days, Object::Number(duration->hours()),
            Object::Number(duration->minutes()),
            Object::Number(duration->seconds()),
@@ -7463,7 +6966,7 @@ MaybeHandle<Object> JSTemporalDuration::Total(
       RoundDuration(isolate,
                     {unbalance_result.years, unbalance_result.months,
                      unbalance_result.weeks, balance_result.value},
-                    1, unit, RoundingMode::kTrunc, relative_to, method_name),
+                    1, unit, RoundingMode::kTrunc, method_name),
       Handle<Object>());
   // 16. Let roundResult be roundRecord.[[DurationRecord]].
   DurationRecord& round_result = round_record.record;
@@ -8110,11 +7613,9 @@ Maybe<DurationRecord> DifferenceZonedDateTime(
 
 Maybe<DurationRecord> AddDuration(Isolate* isolate, const DurationRecord& dur1,
                                   const DurationRecord& dur2,
-                                  Handle<Object> relative_to_obj,
                                   const char* method_name) {
   TEMPORAL_ENTER_FUNC();
 
-  Factory* factory = isolate->factory();
   DurationRecord result;
   // 1. Let largestUnit1 be ! DefaultTemporalLargestUnit(y1, mon1, w1, d1, h1,
   // min1, s1, ms1, mus1).
@@ -8127,177 +7628,35 @@ Maybe<DurationRecord> AddDuration(Isolate* isolate, const DurationRecord& dur1,
   Unit largest_unit = LargerOfTwoTemporalUnits(largest_unit1, largest_unit2);
 
   // 5. If relativeTo is undefined, then
-  if (IsUndefined(*relative_to_obj)) {
-    // a. If largestUnit is one of "year", "month", or "week", then
-    if (largest_unit == Unit::kYear || largest_unit == Unit::kMonth ||
-        largest_unit == Unit::kWeek) {
-      // i. Throw a RangeError exception.
-      THROW_NEW_ERROR_RETURN_VALUE(isolate,
-                                   NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
-                                   Nothing<DurationRecord>());
-    }
-    // b. Let result be ? BalanceDuration(d1 + d2, h1 + h2, min1 + min2, s1 +
-    // s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit).
-    // Note: We call a special version of BalanceDuration which add two duration
-    // internally to avoid overflow the double.
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, result.time_duration,
-        BalanceDuration(isolate, largest_unit, dur1.time_duration,
-                        dur2.time_duration, method_name),
-        Nothing<DurationRecord>());
-
-    // c. Return ! CreateDurationRecord(0, 0, 0, result.[[Days]],
-    // result.[[Hours]], result.[[Minutes]], result.[[Seconds]],
-    // result.[[Milliseconds]], result.[[Microseconds]],
-    // result.[[Nanoseconds]]).
-    return Just(CreateDurationRecord(isolate, {0, 0, 0, result.time_duration})
-                    .ToChecked());
-    // 5. If relativeTo has an [[InitializedTemporalDate]] internal slot, then
-  } else if (IsJSTemporalPlainDate(*relative_to_obj)) {
-    // a. Let calendar be relativeTo.[[Calendar]].
-    Handle<JSTemporalPlainDate> relative_to =
-        Handle<JSTemporalPlainDate>::cast(relative_to_obj);
-    Handle<JSReceiver> calendar(relative_to->calendar(), isolate);
-    // b. Let dateDuration1 be ? CreateTemporalDuration(y1, mon1, w1, d1, 0, 0,
-    // 0, 0, 0, 0).
-    Handle<JSTemporalDuration> date_duration1;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, date_duration1,
-        CreateTemporalDuration(isolate,
-                               {dur1.years,
-                                dur1.months,
-                                dur1.weeks,
-                                {dur1.time_duration.days, 0, 0, 0, 0, 0, 0}}),
-        Nothing<DurationRecord>());
-    // c. Let dateDuration2 be ? CreateTemporalDuration(y2, mon2, w2, d2, 0, 0,
-    // 0, 0, 0, 0).
-    Handle<JSTemporalDuration> date_duration2;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, date_duration2,
-        CreateTemporalDuration(isolate,
-                               {dur2.years,
-                                dur2.months,
-                                dur2.weeks,
-                                {dur2.time_duration.days, 0, 0, 0, 0, 0, 0}}),
-        Nothing<DurationRecord>());
-    // d. Let dateAdd be ? GetMethod(calendar, "dateAdd").
-    Handle<Object> date_add;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, date_add,
-        Object::GetMethod(isolate, calendar, factory->dateAdd_string()),
-        Nothing<DurationRecord>());
-    // e. Let intermediate be ? CalendarDateAdd(calendar, relativeTo,
-    // dateDuration1, undefined, dateAdd).
-    Handle<JSTemporalPlainDate> intermediate;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, intermediate,
-        CalendarDateAdd(isolate, calendar, relative_to, date_duration1,
-                        factory->undefined_value(), date_add),
-        Nothing<DurationRecord>());
-    // f. Let end be ? CalendarDateAdd(calendar, intermediate, dateDuration2,
-    // undefined, dateAdd).
-    Handle<JSTemporalPlainDate> end;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, end,
-        CalendarDateAdd(isolate, calendar, intermediate, date_duration2,
-                        factory->undefined_value(), date_add),
-        Nothing<DurationRecord>());
-    // g. Let dateLargestUnit be ! LargerOfTwoTemporalUnits("day", largestUnit).
-    Unit date_largest_unit = LargerOfTwoTemporalUnits(Unit::kDay, largest_unit);
-    // h. Let differenceOptions be ! OrdinaryObjectCreate(null).
-    Handle<JSObject> difference_options = factory->NewJSObjectWithNullProto();
-    // i. Perform ! CreateDataPropertyOrThrow(differenceOptions, "largestUnit",
-    // dateLargestUnit).
-    CHECK(JSReceiver::CreateDataProperty(
-              isolate, difference_options, factory->largestUnit_string(),
-              UnitToString(isolate, date_largest_unit), Just(kThrowOnError))
-              .FromJust());
-
-    // j. Let dateDifference be ? CalendarDateUntil(calendar, relativeTo, end,
-    // differenceOptions).
-    Handle<JSTemporalDuration> date_difference;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, date_difference,
-        CalendarDateUntil(isolate, calendar, relative_to, end,
-                          difference_options),
-        Nothing<DurationRecord>());
-    // n. Let result be ? BalanceDuration(dateDifference.[[Days]], h1 + h2, min1
-    // + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit).
-    // Note: We call a special version of BalanceDuration which add two duration
-    // internally to avoid overflow the double.
-    TimeDurationRecord time_dur1 = dur1.time_duration;
-    time_dur1.days = Object::Number(date_difference->days());
-    TimeDurationRecord time_dur2 = dur2.time_duration;
-    time_dur2.days = 0;
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, result.time_duration,
-        BalanceDuration(isolate, largest_unit, time_dur1, time_dur2,
-                        method_name),
-        Nothing<DurationRecord>());
-    // l. Return ! CreateDurationRecord(dateDifference.[[Years]],
-    // dateDifference.[[Months]], dateDifference.[[Weeks]], result.[[Days]],
-    // result.[[Hours]], result.[[Minutes]], result.[[Seconds]],
-    // result.[[Milliseconds]], result.[[Microseconds]],
-    // result.[[Nanoseconds]]).
-    return Just(CreateDurationRecord(isolate,
-                                     {Object::Number(date_difference->years()),
-                                      Object::Number(date_difference->months()),
-                                      Object::Number(date_difference->weeks()),
-                                      result.time_duration})
-                    .ToChecked());
+  // a. If largestUnit is one of "year", "month", or "week", then
+  if (largest_unit == Unit::kYear || largest_unit == Unit::kMonth ||
+      largest_unit == Unit::kWeek) {
+    // i. Throw a RangeError exception.
+    THROW_NEW_ERROR_RETURN_VALUE(isolate,
+                                  NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
+                                  Nothing<DurationRecord>());
   }
-  // 6. Assert: relativeTo has an [[InitializedTemporalZonedDateTime]]
-  // internal slot.
-  DCHECK(IsJSTemporalZonedDateTime(*relative_to_obj));
-  Handle<JSTemporalZonedDateTime> relative_to =
-      Handle<JSTemporalZonedDateTime>::cast(relative_to_obj);
-  // 7. Let timeZone be relativeTo.[[TimeZone]].
-  Handle<JSReceiver> time_zone(relative_to->time_zone(), isolate);
-  // 8. Let calendar be relativeTo.[[Calendar]].
-  Handle<JSReceiver> calendar(relative_to->calendar(), isolate);
-  // 9. Let intermediateNs be ? AddZonedDateTime(relativeTo.[[Nanoseconds]],
-  // timeZone, calendar, y1, mon1, w1, d1, h1, min1, s1, ms1, mus1, ns1).
-  Handle<BigInt> intermediate_ns;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, intermediate_ns,
-      AddZonedDateTime(isolate, handle(relative_to->nanoseconds(), isolate),
-                       time_zone, calendar, dur1, method_name),
+  // b. Let result be ? BalanceDuration(d1 + d2, h1 + h2, min1 + min2, s1 +
+  // s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit).
+  // Note: We call a special version of BalanceDuration which add two duration
+  // internally to avoid overflow the double.
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, result.time_duration,
+      BalanceDuration(isolate, largest_unit, dur1.time_duration,
+                      dur2.time_duration, method_name),
       Nothing<DurationRecord>());
-  // 10. Let endNs be ? AddZonedDateTime(intermediateNs, timeZone, calendar,
-  // y2, mon2, w2, d2, h2, min2, s2, ms2, mus2, ns2).
-  Handle<BigInt> end_ns;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, end_ns,
-      AddZonedDateTime(isolate, intermediate_ns, time_zone, calendar, dur2,
-                       method_name),
-      Nothing<DurationRecord>());
-  // 11. If largestUnit is not one of "year", "month", "week", or "day", then
-  if (!(largest_unit == Unit::kYear || largest_unit == Unit::kMonth ||
-        largest_unit == Unit::kWeek || largest_unit == Unit::kDay)) {
-    // a. Let result be ! DifferenceInstant(relativeTo.[[Nanoseconds]], endNs,
-    // 1, *"nanosecond"*, largestUnit, *"halfExpand"*).
-    result.time_duration =
-        DifferenceInstant(isolate, handle(relative_to->nanoseconds(), isolate),
-                          end_ns, 1, Unit::kNanosecond, largest_unit,
-                          RoundingMode::kHalfExpand, method_name);
-    // b. Return ! CreateDurationRecord(0, 0, 0, 0, result.[[Hours]],
-    // result.[[Minutes]], result.[[Seconds]], result.[[Milliseconds]],
-    // result.[[Microseconds]], result.[[Nanoseconds]]).
-    result.time_duration.days = 0;
-    return Just(CreateDurationRecord(isolate, {0, 0, 0, result.time_duration})
-                    .ToChecked());
-  }
-  // 12. Return ? DifferenceZonedDateTime(relativeTo.[[Nanoseconds]], endNs,
-  // timeZone, calendar, largestUnit, OrdinaryObjectCreate(null)).
-  return DifferenceZonedDateTime(
-      isolate, handle(relative_to->nanoseconds(), isolate), end_ns, time_zone,
-      calendar, largest_unit, factory->NewJSObjectWithNullProto(), method_name);
+
+  // c. Return ! CreateDurationRecord(0, 0, 0, result.[[Days]],
+  // result.[[Hours]], result.[[Minutes]], result.[[Seconds]],
+  // result.[[Milliseconds]], result.[[Microseconds]],
+  // result.[[Nanoseconds]]).
+  return Just(CreateDurationRecord(isolate, {0, 0, 0, result.time_duration})
+                  .ToChecked());
 }
 
 MaybeHandle<JSTemporalDuration> AddDurationToOrSubtractDurationFromDuration(
     Isolate* isolate, Arithmetic operation, Handle<JSTemporalDuration> duration,
-    Handle<Object> other_obj, Handle<Object> options_obj,
-    const char* method_name) {
+    Handle<Object> other_obj, const char* method_name) {
   // 1. If operation is subtract, let sign be -1. Otherwise, let sign be 1.
   double sign = operation == Arithmetic::kSubtract ? -1.0 : 1.0;
 
@@ -8307,19 +7666,6 @@ MaybeHandle<JSTemporalDuration> AddDurationToOrSubtractDurationFromDuration(
       isolate, other,
       temporal::ToTemporalDurationRecord(isolate, other_obj, method_name),
       Handle<JSTemporalDuration>());
-
-  // 3. Set options to ? GetOptionsObject(options).
-  Handle<JSReceiver> options;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, options, GetOptionsObject(isolate, options_obj, method_name),
-      JSTemporalDuration);
-
-  // 4. Let relativeTo be ? ToRelativeTemporalObject(options).
-  Handle<Object> relative_to;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, relative_to,
-      ToRelativeTemporalObject(isolate, options, method_name),
-      JSTemporalDuration);
 
   // 5. Let result be ? AddDuration(duration.[[Years]], duration.[[Months]],
   // duration.[[Weeks]], duration.[[Days]], duration.[[Hours]],
@@ -8352,7 +7698,7 @@ MaybeHandle<JSTemporalDuration> AddDurationToOrSubtractDurationFromDuration(
             sign * other.time_duration.milliseconds,
             sign * other.time_duration.microseconds,
             sign * other.time_duration.nanoseconds}},
-          relative_to, method_name),
+          method_name),
       Handle<JSTemporalDuration>());
 
   // 6. Return ! CreateTemporalDuration(result.[[Years]], result.[[Months]],
@@ -8366,19 +7712,19 @@ MaybeHandle<JSTemporalDuration> AddDurationToOrSubtractDurationFromDuration(
 
 // #sec-temporal.duration.prototype.add
 MaybeHandle<JSTemporalDuration> JSTemporalDuration::Add(
-    Isolate* isolate, Handle<JSTemporalDuration> duration, Handle<Object> other,
-    Handle<Object> options) {
+    Isolate* isolate, Handle<JSTemporalDuration> duration,
+    Handle<Object> other) {
   return AddDurationToOrSubtractDurationFromDuration(
-      isolate, Arithmetic::kAdd, duration, other, options,
+      isolate, Arithmetic::kAdd, duration, other,
       "Temporal.Duration.prototype.add");
 }
 
 // #sec-temporal.duration.prototype.subtract
 MaybeHandle<JSTemporalDuration> JSTemporalDuration::Subtract(
-    Isolate* isolate, Handle<JSTemporalDuration> duration, Handle<Object> other,
-    Handle<Object> options) {
+    Isolate* isolate, Handle<JSTemporalDuration> duration,
+    Handle<Object> other) {
   return AddDurationToOrSubtractDurationFromDuration(
-      isolate, Arithmetic::kSubtract, duration, other, options,
+      isolate, Arithmetic::kSubtract, duration, other,
       "Temporal.Duration.prototype.subtract");
 }
 
@@ -8432,34 +7778,6 @@ MaybeHandle<String> JSTemporalDuration::ToLocaleString(
 }
 
 namespace {
-// #sec-temporal-moverelativezoneddatetime
-MaybeHandle<JSTemporalZonedDateTime> MoveRelativeZonedDateTime(
-    Isolate* isolate, Handle<JSTemporalZonedDateTime> zoned_date_time,
-    const DateDurationRecord& duration, const char* method_name) {
-  // 1. Let intermediateNs be ? AddZonedDateTime(zonedDateTime.[[Nanoseconds]],
-  // zonedDateTime.[[TimeZone]], zonedDateTime.[[Calendar]], years, months,
-  // weeks, days, 0, 0, 0, 0, 0, 0).
-  Handle<BigInt> intermediate_ns;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, intermediate_ns,
-      AddZonedDateTime(isolate, handle(zoned_date_time->nanoseconds(), isolate),
-                       handle(zoned_date_time->time_zone(), isolate),
-                       handle(zoned_date_time->calendar(), isolate),
-                       {duration.years,
-                        duration.months,
-                        duration.weeks,
-                        {duration.days, 0, 0, 0, 0, 0, 0}},
-                       method_name),
-      JSTemporalZonedDateTime);
-  // 2. Return ! CreateTemporalZonedDateTime(intermediateNs,
-  // zonedDateTime.[[TimeZone]], zonedDateTime.[[Calendar]]).
-  return CreateTemporalZonedDateTime(
-             isolate, intermediate_ns,
-             handle(zoned_date_time->time_zone(), isolate),
-             handle(zoned_date_time->calendar(), isolate))
-      .ToHandleChecked();
-}
-
 // #sec-temporal-daysuntil
 double DaysUntil(Isolate* isolate, Handle<JSTemporalPlainDate> earlier,
                  Handle<JSTemporalPlainDate> later, const char* method_name) {
@@ -8499,60 +7817,22 @@ Maybe<DurationRecordWithRemainder> RoundDuration(Isolate* isolate,
                                                  const DurationRecord& duration,
                                                  double increment, Unit unit,
                                                  RoundingMode rounding_mode,
-                                                 Handle<Object> relative_to,
                                                  const char* method_name) {
   TEMPORAL_ENTER_FUNC();
-  // optional argument relativeTo (undefined, a Temporal.PlainDate, or a
-  // Temporal.ZonedDateTime)
-  DCHECK(IsUndefined(*relative_to) || IsJSTemporalPlainDate(*relative_to) ||
-         IsJSTemporalZonedDateTime(*relative_to));
 
-  Factory* factory = isolate->factory();
   DurationRecordWithRemainder result;
   result.record = duration;
   // 2. If unit is "year", "month", or "week", and relativeTo is undefined, then
-  if ((unit == Unit::kYear || unit == Unit::kMonth || unit == Unit::kWeek) &&
-      IsUndefined(*relative_to)) {
+  if (unit == Unit::kYear || unit == Unit::kMonth || unit == Unit::kWeek) {
     // a. Throw a RangeError exception.
     THROW_NEW_ERROR_RETURN_VALUE(isolate,
                                  NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
                                  Nothing<DurationRecordWithRemainder>());
   }
 
-  // 3. Let zonedRelativeTo be undefined.
-  Handle<Object> zoned_relative_to = isolate->factory()->undefined_value();
-
-  Handle<JSReceiver> calendar;
-  // 5. If relativeTo is not undefined, then
-  if (!IsUndefined(*relative_to)) {
-    // a. If relativeTo has an [[InitializedTemporalZonedDateTime]] internal
-    // slot, then
-    if (IsJSTemporalZonedDateTime(*relative_to)) {
-      // i. Set zonedRelativeTo to relativeTo.
-      zoned_relative_to = relative_to;
-      // ii. Set relativeTo to ? ToTemporalDate(relativeTo).
-      Handle<JSTemporalPlainDate> date;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, date, ToTemporalDate(isolate, relative_to, method_name),
-          Nothing<DurationRecordWithRemainder>());
-      relative_to = date;
-      // b. Else,
-    } else {
-      // i. Assert: relativeTo has an [[InitializedTemporalDate]] internal
-      // slot.
-      DCHECK(IsJSTemporalPlainDate(*relative_to));
-    }
-    // c. Let calendar be relativeTo.[[Calendar]].
-    calendar = Handle<JSReceiver>(
-        Handle<JSTemporalPlainDate>::cast(relative_to)->calendar(), isolate);
-    // 5. Else,
-  } else {
-    // a. NOTE: calendar will not be used below.
-  }
   double fractional_seconds = 0;
   // 6. If unit is one of "year", "month", "week", or "day", then
-  if (unit == Unit::kYear || unit == Unit::kMonth || unit == Unit::kWeek ||
-      unit == Unit::kDay) {
+  if (unit == Unit::kDay) {
     // a. Let nanoseconds be ! TotalDurationNanoseconds(0, hours, minutes,
     // seconds, milliseconds, microseconds, nanoseconds, 0).
     TimeDurationRecord time_duration = duration.time_duration;
@@ -8562,21 +7842,6 @@ Maybe<DurationRecordWithRemainder> RoundDuration(Isolate* isolate,
 
     // b. Let intermediate be undefined.
     Handle<Object> intermediate = isolate->factory()->undefined_value();
-
-    // c. If zonedRelativeTo is not undefined, then
-    if (!IsUndefined(*zoned_relative_to)) {
-      DCHECK(IsJSTemporalZonedDateTime(*zoned_relative_to));
-      // i. Let intermediate be ? MoveRelativeZonedDateTime(zonedRelativeTo,
-      // years, months, weeks, days).
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, intermediate,
-          MoveRelativeZonedDateTime(
-              isolate, Handle<JSTemporalZonedDateTime>::cast(zoned_relative_to),
-              {duration.years, duration.months, duration.weeks,
-               duration.time_duration.days},
-              method_name),
-          Nothing<DurationRecordWithRemainder>());
-    }
 
     // d. Let result be ? NanosecondsToDays(nanoseconds, intermediate).
     NanosecondsToDaysResult to_days_result;
@@ -8613,344 +7878,6 @@ Maybe<DurationRecordWithRemainder> RoundDuration(Isolate* isolate,
   result.remainder = -1;  // use -1 for undefined now.
 
   switch (unit) {
-    // 9. If unit is "year", then
-    case Unit::kYear: {
-      // a. Let yearsDuration be ! CreateTemporalDuration(years, 0, 0, 0, 0, 0,
-      // 0, 0, 0, 0).
-      Handle<JSTemporalDuration> years_duration =
-          CreateTemporalDuration(isolate,
-                                 {duration.years, 0, 0, {0, 0, 0, 0, 0, 0, 0}})
-              .ToHandleChecked();
-
-      // b. Let dateAdd be ? GetMethod(calendar, "dateAdd").
-      Handle<Object> date_add;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, date_add,
-          Object::GetMethod(isolate, calendar, factory->dateAdd_string()),
-          Nothing<DurationRecordWithRemainder>());
-
-      // c. Let yearsLater be ? CalendarDateAdd(calendar, relativeTo,
-      // yearsDuration, undefined, dateAdd).
-      Handle<JSTemporalPlainDate> years_later;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, years_later,
-          CalendarDateAdd(isolate, calendar, relative_to, years_duration,
-                          isolate->factory()->undefined_value(), date_add),
-          Nothing<DurationRecordWithRemainder>());
-
-      // d. Let yearsMonthsWeeks be ! CreateTemporalDuration(years, months,
-      // weeks, 0, 0, 0, 0, 0, 0, 0).
-      Handle<JSTemporalDuration> years_months_weeks =
-          CreateTemporalDuration(isolate, {duration.years,
-                                           duration.months,
-                                           duration.weeks,
-                                           {0, 0, 0, 0, 0, 0, 0}})
-              .ToHandleChecked();
-
-      // e. Let yearsMonthsWeeksLater be ? CalendarDateAdd(calendar, relativeTo,
-      // yearsMonthsWeeks, undefined, dateAdd).
-      Handle<JSTemporalPlainDate> years_months_weeks_later;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, years_months_weeks_later,
-          CalendarDateAdd(isolate, calendar, relative_to, years_months_weeks,
-                          isolate->factory()->undefined_value(), date_add),
-          Nothing<DurationRecordWithRemainder>());
-
-      // f. Let monthsWeeksInDays be DaysUntil(yearsLater,
-      // yearsMonthsWeeksLater).
-      double months_weeks_in_days = DaysUntil(
-          isolate, years_later, years_months_weeks_later, method_name);
-
-      // g. Set relativeTo to yearsLater.
-      relative_to = years_later;
-
-      // h. Let days be days + monthsWeeksInDays.
-      result.record.time_duration.days += months_weeks_in_days;
-
-      // i. Let daysDuration be ? CreateTemporalDuration(0, 0, 0, days, 0, 0, 0,
-      // 0, 0, 0).
-      Handle<JSTemporalDuration> days_duration;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, days_duration,
-          CreateTemporalDuration(
-              isolate,
-              {0, 0, 0, {result.record.time_duration.days, 0, 0, 0, 0, 0, 0}}),
-          Nothing<DurationRecordWithRemainder>());
-
-      // j. Let daysLater be ? CalendarDateAdd(calendar, relativeTo,
-      // daysDuration, undefined, dateAdd).
-      Handle<JSTemporalPlainDate> days_later;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, days_later,
-          CalendarDateAdd(isolate, calendar, relative_to, days_duration,
-                          isolate->factory()->undefined_value(), date_add),
-          Nothing<DurationRecordWithRemainder>());
-
-      // k. Let untilOptions be OrdinaryObjectCreate(null).
-      Handle<JSObject> until_options = factory->NewJSObjectWithNullProto();
-
-      // l. Perform ! CreateDataPropertyOrThrow(untilOptions, "largestUnit",
-      // "year").
-      CHECK(JSReceiver::CreateDataProperty(
-                isolate, until_options, factory->largestUnit_string(),
-                factory->year_string(), Just(kThrowOnError))
-                .FromJust());
-
-      // m. Let timePassed be ? CalendarDateUntil(calendar, relativeTo,
-      // daysLater, untilOptions).
-      Handle<JSTemporalDuration> time_passed;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, time_passed,
-          CalendarDateUntil(isolate, calendar, relative_to, days_later,
-                            until_options),
-          Nothing<DurationRecordWithRemainder>());
-
-      // n. Let yearsPassed be timePassed.[[Years]].
-      double years_passed = Object::Number(time_passed->years());
-
-      // o. Set years to years + yearsPassed.
-      result.record.years += years_passed;
-
-      // p. Let oldRelativeTo be relativeTo.
-      Handle<Object> old_relative_to = relative_to;
-
-      // q. Let yearsDuration be ? CreateTemporalDuration(yearsPassed, 0, 0, 0,
-      // 0, 0, 0, 0, 0, 0).
-      years_duration = CreateTemporalDuration(
-                           isolate, {years_passed, 0, 0, {0, 0, 0, 0, 0, 0, 0}})
-                           .ToHandleChecked();
-
-      // r. Set relativeTo to ? CalendarDateAdd(calendar, relativeTo,
-      // yearsDuration, undefined, dateAdd).
-      Handle<JSTemporalPlainDate> years_added;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, years_added,
-          CalendarDateAdd(isolate, calendar, relative_to, years_duration,
-                          isolate->factory()->undefined_value(), date_add),
-          Nothing<DurationRecordWithRemainder>());
-      relative_to = years_added;
-
-      // s. Let daysPassed be DaysUntil(oldRelativeTo, relativeTo).
-      DCHECK(IsJSTemporalPlainDate(*old_relative_to));
-      DCHECK(IsJSTemporalPlainDate(*relative_to));
-      double days_passed = DaysUntil(
-          isolate, Handle<JSTemporalPlainDate>::cast(old_relative_to),
-          Handle<JSTemporalPlainDate>::cast(relative_to), method_name);
-
-      // t. Set days to days - daysPassed.
-      result.record.time_duration.days -= days_passed;
-
-      // u. If days < 0, let sign be -1; else, let sign be 1.
-      double sign = result.record.time_duration.days < 0 ? -1 : 1;
-
-      // v. Let oneYear be ! CreateTemporalDuration(sign, 0, 0, 0, 0, 0, 0, 0,
-      // 0, 0).
-      Handle<JSTemporalDuration> one_year =
-          CreateTemporalDuration(isolate, {sign, 0, 0, {0, 0, 0, 0, 0, 0, 0}})
-              .ToHandleChecked();
-
-      // w. Let moveResult be ? MoveRelativeDate(calendar, relativeTo, oneYear).
-      MoveRelativeDateResult move_result;
-      DCHECK(IsJSTemporalPlainDate(*relative_to));
-      MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, move_result,
-          MoveRelativeDate(isolate, calendar,
-                           Handle<JSTemporalPlainDate>::cast(relative_to),
-                           one_year, method_name),
-          Nothing<DurationRecordWithRemainder>());
-
-      // x. Let oneYearDays be moveResult.[[Days]].
-      double one_year_days = move_result.days;
-      // y. Let fractionalYears be years + days / abs(oneYearDays).
-      double fractional_years =
-          result.record.years +
-          result.record.time_duration.days / std::abs(one_year_days);
-      // z. Set years to RoundNumberToIncrement(fractionalYears, increment,
-      // roundingMode).
-      result.record.years = RoundNumberToIncrement(isolate, fractional_years,
-                                                   increment, rounding_mode);
-      // aa. Set remainder to fractionalYears - years.
-      result.remainder = fractional_years - result.record.years;
-      // ab. Set months, weeks, and days to 0.
-      result.record.months = result.record.weeks =
-          result.record.time_duration.days = 0;
-    } break;
-    // 10. Else if unit is "month", then
-    case Unit::kMonth: {
-      // a. Let yearsMonths be ! CreateTemporalDuration(years, months, 0, 0, 0,
-      // 0, 0, 0, 0, 0).
-      Handle<JSTemporalDuration> years_months =
-          CreateTemporalDuration(
-              isolate,
-              {duration.years, duration.months, 0, {0, 0, 0, 0, 0, 0, 0}})
-              .ToHandleChecked();
-
-      // b. Let dateAdd be ? GetMethod(calendar, "dateAdd").
-      Handle<Object> date_add;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, date_add,
-          Object::GetMethod(isolate, calendar, factory->dateAdd_string()),
-          Nothing<DurationRecordWithRemainder>());
-
-      // c. Let yearsMonthsLater be ? CalendarDateAdd(calendar, relativeTo,
-      // yearsMonths, undefined, dateAdd).
-      Handle<JSTemporalPlainDate> years_months_later;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, years_months_later,
-          CalendarDateAdd(isolate, calendar, relative_to, years_months,
-                          isolate->factory()->undefined_value(), date_add),
-          Nothing<DurationRecordWithRemainder>());
-
-      // d. Let yearsMonthsWeeks be ! CreateTemporalDuration(years, months,
-      // weeks, 0, 0, 0, 0, 0, 0, 0).
-      Handle<JSTemporalDuration> years_months_weeks =
-          CreateTemporalDuration(isolate, {duration.years,
-                                           duration.months,
-                                           duration.weeks,
-                                           {0, 0, 0, 0, 0, 0, 0}})
-              .ToHandleChecked();
-
-      // e. Let yearsMonthsWeeksLater be ? CalendarDateAdd(calendar, relativeTo,
-      // yearsMonthsWeeks, undefined, dateAdd).
-      Handle<JSTemporalPlainDate> years_months_weeks_later;
-      ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, years_months_weeks_later,
-          CalendarDateAdd(isolate, calendar, relative_to, years_months_weeks,
-                          isolate->factory()->undefined_value(), date_add),
-          Nothing<DurationRecordWithRemainder>());
-
-      // f. Let weeksInDays be DaysUntil(yearsMonthsLater,
-      // yearsMonthsWeeksLater).
-      double weeks_in_days = DaysUntil(isolate, years_months_later,
-                                       years_months_weeks_later, method_name);
-
-      // g. Set relativeTo to yearsMonthsLater.
-      relative_to = years_months_later;
-
-      // h. Let days be days + weeksInDays.
-      result.record.time_duration.days += weeks_in_days;
-
-      // i. If days < 0, let sign be -1; else, let sign be 1.
-      double sign = result.record.time_duration.days < 0 ? -1 : 1;
-
-      // j. Let oneMonth be ! CreateTemporalDuration(0, sign, 0, 0, 0, 0, 0, 0,
-      // 0, 0).
-      Handle<JSTemporalDuration> one_month =
-          CreateTemporalDuration(isolate, {0, sign, 0, {0, 0, 0, 0, 0, 0, 0}})
-              .ToHandleChecked();
-
-      // k. Let moveResult be ? MoveRelativeDate(calendar, relativeTo,
-      // oneMonth).
-      MoveRelativeDateResult move_result;
-      DCHECK(IsJSTemporalPlainDate(*relative_to));
-      MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, move_result,
-          MoveRelativeDate(isolate, calendar,
-                           Handle<JSTemporalPlainDate>::cast(relative_to),
-                           one_month, method_name),
-          Nothing<DurationRecordWithRemainder>());
-
-      // l. Set relativeTo to moveResult.[[RelativeTo]].
-      relative_to = move_result.relative_to;
-
-      // m. Let oneMonthDays be moveResult.[[Days]].
-      double one_month_days = move_result.days;
-
-      // n. Repeat, while abs(days) ≥ abs(oneMonthDays),
-      while (std::abs(result.record.time_duration.days) >=
-             std::abs(one_month_days)) {
-        // i. Set months to months + sign.
-        result.record.months += sign;
-        // ii. Set days to days - oneMonthDays.
-        result.record.time_duration.days -= one_month_days;
-        // iii. Set moveResult to ? MoveRelativeDate(calendar, relativeTo,
-        // oneMonth).
-        DCHECK(IsJSTemporalPlainDate(*relative_to));
-        MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-            isolate, move_result,
-            MoveRelativeDate(isolate, calendar,
-                             Handle<JSTemporalPlainDate>::cast(relative_to),
-                             one_month, method_name),
-            Nothing<DurationRecordWithRemainder>());
-        // iv. Set relativeTo to moveResult.[[RelativeTo]].
-        relative_to = move_result.relative_to;
-        // v. Set oneMonthDays to moveResult.[[Days]].
-        one_month_days = move_result.days;
-      }
-      // o. Let fractionalMonths be months + days / abs(oneMonthDays).
-      double fractional_months =
-          result.record.months +
-          result.record.time_duration.days / std::abs(one_month_days);
-      // p. Set months to RoundNumberToIncrement(fractionalMonths, increment,
-      // roundingMode).
-      result.record.months = RoundNumberToIncrement(isolate, fractional_months,
-                                                    increment, rounding_mode);
-      // q. Set remainder to fractionalMonths - months.
-      result.remainder = fractional_months - result.record.months;
-      // r. Set weeks and days to 0.
-      result.record.weeks = result.record.time_duration.days = 0;
-    } break;
-    // 11. Else if unit is "week", then
-    case Unit::kWeek: {
-      // a. If days < 0, let sign be -1; else, let sign be 1.
-      double sign = result.record.time_duration.days < 0 ? -1 : 1;
-      // b. Let oneWeek be ! CreateTemporalDuration(0, 0, sign, 0, 0, 0, 0, 0,
-      // 0, 0).
-      Handle<JSTemporalDuration> one_week =
-          CreateTemporalDuration(isolate, {0, 0, sign, {0, 0, 0, 0, 0, 0, 0}})
-              .ToHandleChecked();
-
-      // c. Let moveResult be ? MoveRelativeDate(calendar, relativeTo, oneWeek).
-      MoveRelativeDateResult move_result;
-      DCHECK(IsJSTemporalPlainDate(*relative_to));
-      MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-          isolate, move_result,
-          MoveRelativeDate(isolate, calendar,
-                           Handle<JSTemporalPlainDate>::cast(relative_to),
-                           one_week, method_name),
-          Nothing<DurationRecordWithRemainder>());
-
-      // d. Set relativeTo to moveResult.[[RelativeTo]].
-      relative_to = move_result.relative_to;
-
-      // e. Let oneWeekDays be moveResult.[[Days]].
-      double one_week_days = move_result.days;
-
-      // f. Repeat, while abs(days) ≥ abs(oneWeekDays),
-      while (std::abs(result.record.time_duration.days) >=
-             std::abs(one_week_days)) {
-        // i. Set weeks to weeks + sign.
-        result.record.weeks += sign;
-        // ii. Set days to days - oneWeekDays.
-        result.record.time_duration.days -= one_week_days;
-        // iii. Set moveResult to ? MoveRelativeDate(calendar, relativeTo,
-        // oneWeek).
-        DCHECK(IsJSTemporalPlainDate(*relative_to));
-        MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-            isolate, move_result,
-            MoveRelativeDate(isolate, calendar,
-                             Handle<JSTemporalPlainDate>::cast(relative_to),
-                             one_week, method_name),
-            Nothing<DurationRecordWithRemainder>());
-        // iv. Set relativeTo to moveResult.[[RelativeTo]].
-        relative_to = move_result.relative_to;
-        // v. Set oneWeekDays to moveResult.[[Days]].
-        one_week_days = move_result.days;
-      }
-
-      // g. Let fractionalWeeks be weeks + days / abs(oneWeekDays).
-      double fractional_weeks =
-          result.record.weeks +
-          result.record.time_duration.days / std::abs(one_week_days);
-      // h. Set weeks to RoundNumberToIncrement(fractionalWeeks, increment,
-      // roundingMode).
-      result.record.weeks = RoundNumberToIncrement(isolate, fractional_weeks,
-                                                   increment, rounding_mode);
-      // i. Set remainder to fractionalWeeks - weeks.
-      result.remainder = fractional_weeks - result.record.weeks;
-      // j. Set days to 0.
-      result.record.time_duration.days = 0;
-    } break;
     // 12. Else if unit is "day", then
     case Unit::kDay: {
       // a. Let fractionalDays be days.
@@ -9089,16 +8016,6 @@ Maybe<DurationRecordWithRemainder> RoundDuration(Isolate* isolate,
       Nothing<DurationRecordWithRemainder>());
 
   return Just(result);
-}
-
-Maybe<DurationRecordWithRemainder> RoundDuration(Isolate* isolate,
-                                                 const DurationRecord& duration,
-                                                 double increment, Unit unit,
-                                                 RoundingMode rounding_mode,
-                                                 const char* method_name) {
-  // 1. If relativeTo is not present, set relativeTo to undefined.
-  return RoundDuration(isolate, duration, increment, unit, rounding_mode,
-                       isolate->factory()->undefined_value(), method_name);
 }
 
 // #sec-temporal-tosecondsstringprecision
@@ -11336,7 +10253,7 @@ MaybeHandle<JSTemporalDuration> DifferenceTemporalPlainDate(
                        Object::Number(result->weeks()),
                        {Object::Number(result->days()), 0, 0, 0, 0, 0, 0}},
                       settings.rounding_increment, settings.smallest_unit,
-                      settings.rounding_mode, temporal_date, method_name),
+                      settings.rounding_mode, method_name),
         Handle<JSTemporalDuration>());
     // 8. Return ! CreateTemporalDuration(sign × result.[[Years]], sign ×
     // result.[[Months]], sign × result.[[Weeks]], sign × result.[[Days]], 0, 0,
@@ -12673,7 +11590,7 @@ MaybeHandle<JSTemporalDuration> DifferenceTemporalPlainDateTime(
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, round_result,
       RoundDuration(isolate, diff, settings.rounding_increment,
-                    settings.smallest_unit, settings.rounding_mode, relative_to,
+                    settings.smallest_unit, settings.rounding_mode,
                     method_name),
       Handle<JSTemporalDuration>());
   // 8. Let result be ? BalanceDuration(roundResult.[[Days]],
@@ -15601,7 +14518,7 @@ MaybeHandle<JSTemporalDuration> DifferenceTemporalZonedDateTime(
       isolate, round_result,
       RoundDuration(isolate, difference, settings.rounding_increment,
                     settings.smallest_unit, settings.rounding_mode,
-                    zoned_date_time, method_name),
+                    method_name),
       Handle<JSTemporalDuration>());
   // 10. Let result be ? AdjustRoundedDurationDays(roundResult.[[Years]],
   // roundResult.[[Months]], roundResult.[[Weeks]], roundResult.[[Days]],
@@ -15609,14 +14526,7 @@ MaybeHandle<JSTemporalDuration> DifferenceTemporalZonedDateTime(
   // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
   // roundResult.[[Nanoseconds]], settings.[[RoundingIncrement]],
   // settings.[[SmallestUnit]], settings.[[RoundingMode]], zonedDateTime).
-  DurationRecord result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, result,
-      AdjustRoundedDurationDays(isolate, round_result.record,
-                                settings.rounding_increment,
-                                settings.smallest_unit, settings.rounding_mode,
-                                zoned_date_time, method_name),
-      Handle<JSTemporalDuration>());
+  DurationRecord result = round_result.record;
 
   // 11. Return ! CreateTemporalDuration(sign × result.[[Years]], sign ×
   // result.[[Months]], sign × result.[[Weeks]], sign × result.[[Days]], sign ×
@@ -16797,7 +15707,6 @@ TimeDurationRecord DifferenceInstant(Isolate* isolate, Handle<BigInt> ns1,
   // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
   // roundResult.[[Nanoseconds]], largestUnit).
   return BalanceDuration(isolate, largest_unit,
-                         isolate->factory()->undefined_value(),
                          round_record.record.time_duration, method_name)
       .ToChecked();
 }

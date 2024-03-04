@@ -2183,7 +2183,7 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     CALENDAR_FUNC_LIST(INSTALL_CALENDAR_FUNC)
 #undef CALENDAR_FUNC_LIST
 #undef CALENDAR_FUNC_LIST_INTL
-#undef INSTALL_CALENDAE_FUNC
+#undef INSTALL_CALENDAR_FUNC
   }
 #undef INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE
 #undef INSTALL_TEMPORAL_FUNC
@@ -2197,16 +2197,6 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
                                  "StringFixedArrayFromIterable"),
                              Builtin::kStringFixedArrayFromIterable, 1, false);
     native_context->set_string_fixed_array_from_iterable(*func);
-  }
-  // The TemporalInsantFixedArrayFromIterable functions is created but not
-  // exposed, as it is used internally by GetPossibleInstantsFor.
-  {
-    Handle<JSFunction> func = SimpleCreateFunction(
-        isolate,
-        isolate->factory()->InternalizeUtf8String(
-            "TemporalInstantFixedArrayFromIterable"),
-        Builtin::kTemporalInstantFixedArrayFromIterable, 1, false);
-    native_context->set_temporal_instant_fixed_array_from_iterable(*func);
   }
 
   native_context->set_temporal_object(*temporal);

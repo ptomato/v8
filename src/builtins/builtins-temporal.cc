@@ -148,23 +148,20 @@ BUILTIN(TemporalObjectCalendarGetter) {
   switch (ctor_type) {
     case kPlainDate: {
       CHECK_RECEIVER(JSTemporalPlainDate, date, getter_name.c_str());
-      return date->calendar();
-    }
-
-    // NOTE: Outdated. In current spec, PlainTime has no calendar
-    case kPlainTime: {
-      CHECK_RECEIVER(JSTemporalPlainTime, time, getter_name.c_str());
-      return time->calendar();
+      RETURN_RESULT_OR_FAILURE(
+          isolate, temporal::CreateTemporalCalendar(isolate, date->calendar()));
     }
 
     case kPlainDateTime: {
       CHECK_RECEIVER(JSTemporalPlainDateTime, date_time, getter_name.c_str());
-      return date_time->calendar();
+      RETURN_RESULT_OR_FAILURE(isolate, temporal::CreateTemporalCalendar(
+                                            isolate, date_time->calendar()));
     }
 
     case kZonedDateTime: {
       CHECK_RECEIVER(JSTemporalZonedDateTime, zdt, getter_name.c_str());
-      return zdt->calendar();
+      RETURN_RESULT_OR_FAILURE(
+          isolate, temporal::CreateTemporalCalendar(isolate, zdt->calendar()));
     }
 
     default:
@@ -182,7 +179,7 @@ BUILTIN(TemporalObjectCalendarDelegateGetter) {
                      temporal_constructor_names[ctor_type] + ".prototype." +
                      prop->ToCString().get();
 
-  Handle<JSReceiver> calendar;
+  int calendar_index;
   Handle<JSReceiver> arg;
 
   // 2. Perform ? RequireInternalSlot(dateLike, [[InitializedTemporal#T]]).
@@ -191,13 +188,13 @@ BUILTIN(TemporalObjectCalendarDelegateGetter) {
   switch (ctor_type) {
     case kPlainDate: {
       CHECK_RECEIVER(JSTemporalPlainDate, date, getter_name.c_str());
-      calendar = handle(date->calendar(), isolate);
+      calendar_index = date->calendar();
       arg = date;
     } break;
 
     case kPlainDateTime: {
       CHECK_RECEIVER(JSTemporalPlainDateTime, date_time, getter_name.c_str());
-      calendar = handle(date_time->calendar(), isolate);
+      calendar_index = date_time->calendar();
       arg = date_time;
     } break;
 
@@ -207,7 +204,7 @@ BUILTIN(TemporalObjectCalendarDelegateGetter) {
       //    [[InitializedTemporalZonedDateTime]]).
       CHECK_RECEIVER(JSTemporalZonedDateTime, zdt, getter_name.c_str());
       // 3. Let timeZone be zonedDateTime.[[TimeZone]].
-      Handle<JSReceiver> time_zone{zdt->time_zone(), isolate};
+      TimeZoneDataRecord time_zone_rec{zdt};
       // 4. Let instant be ?
       // CreateTemporalInstant(zonedDateTime.[[Nanoseconds]]).
       Handle<JSTemporalInstant> instant;
@@ -216,23 +213,22 @@ BUILTIN(TemporalObjectCalendarDelegateGetter) {
           isolate, instant,
           temporal::CreateTemporalInstant(isolate, epoch_nanoseconds));
       // 5. Let calendar be zonedDateTime.[[Calendar]].
-      calendar = handle(zdt->calendar(), isolate);
+      calendar_index = zdt->calendar();
       // 6. Let temporalDateTime be ? GetPlainDateTimeFor(timeZone, instant,
       //    calendar).
       ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
           isolate, arg,
           temporal::BuiltinTimeZoneGetPlainDateTimeFor(
-              isolate, time_zone, instant, calendar, prop->ToCString().get()));
+              isolate, time_zone_rec, instant, calendar_index,
+              prop->ToCString().get()));
     } break;
 
     default:
       UNREACHABLE();
   }
 
-  // NOTE: Outdated. In current spec, return value from calendar method must be
-  // validated if the calendar is not builtin.
-  RETURN_RESULT_OR_FAILURE(
-      isolate, temporal::InvokeCalendarMethod(isolate, calendar, prop, arg));
+  RETURN_RESULT_OR_FAILURE(isolate, temporal::InvokeCalendarMethod(
+                                        isolate, calendar_index, prop, arg));
 }
 
 template <class T>
@@ -276,7 +272,7 @@ BUILTIN(TemporalObjectTimeUnitGetter) {
       //    [[InitializedTemporalZonedDateTime]]).
       CHECK_RECEIVER(JSTemporalZonedDateTime, zdt, getter_name.c_str());
       // 3. Let timeZone be zonedDateTime.[[TimeZone]].
-      Handle<JSReceiver> time_zone{zdt->time_zone(), isolate};
+      TimeZoneDataRecord time_zone_rec{zdt};
       // 4. Let instant be ?
       // CreateTemporalInstant(zonedDateTime.[[Nanoseconds]]).
       Handle<JSTemporalInstant> instant;
@@ -285,14 +281,15 @@ BUILTIN(TemporalObjectTimeUnitGetter) {
           isolate, instant,
           temporal::CreateTemporalInstant(isolate, epoch_nanoseconds));
       // 5. Let calendar be zonedDateTime.[[Calendar]].
-      Handle<JSReceiver> calendar{zdt->calendar(), isolate};
+      int calendar_index = zdt->calendar();
       // 6. Let temporalDateTime be ? GetPlainDateTimeFor(timeZone, instant,
       //    calendar).
       Handle<JSTemporalPlainDateTime> date_time;
       ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
           isolate, date_time,
           temporal::BuiltinTimeZoneGetPlainDateTimeFor(
-              isolate, time_zone, instant, calendar, prop->ToCString().get()));
+              isolate, time_zone_rec, instant, calendar_index,
+              prop->ToCString().get()));
       result = GetTimeUnit(date_time, prop_name.get());
     } break;
 
@@ -502,7 +499,16 @@ BUILTIN(TemporalZonedDateTimeConstructor) {
 }
 TEMPORAL_METHOD2(ZonedDateTime, From)
 TEMPORAL_METHOD2(ZonedDateTime, Compare)
-TEMPORAL_GET(ZonedDateTime, TimeZone, time_zone)
+// NOTE: Outdated, replaced by timeZoneId in current spec
+BUILTIN(TemporalZonedDateTimePrototypeTimeZone) {
+  HandleScope scope{isolate};
+  CHECK_RECEIVER(JSTemporalTimeZone, obj,
+                 "Temporal.TimeZone.prototype.timeZone");
+  Handle<String> id = TimeZoneDataRecord{obj}.ToIdentifier(isolate);
+  RETURN_RESULT_OR_FAILURE(isolate,
+                           temporal::CreateTemporalTimeZone(isolate, id));
+}
+
 TEMPORAL_PROTOTYPE_METHOD1(ZonedDateTime, Equals, equals)
 TEMPORAL_PROTOTYPE_METHOD0(ZonedDateTime, HoursInDay, hoursInDay)
 TEMPORAL_PROTOTYPE_METHOD2(ZonedDateTime, With, with)
@@ -633,25 +639,60 @@ BUILTIN(TemporalCalendarPrototypeToString) {
   CHECK_RECEIVER(JSTemporalCalendar, calendar, method_name);
   // 3. Return calendar.[[Identifier]].
   RETURN_RESULT_OR_FAILURE(
-      isolate, JSTemporalCalendar::ToString(isolate, calendar, method_name));
+      isolate, JSTemporalCalendar::ToString(isolate, calendar->calendar_index(),
+                                            method_name));
 }
 
-TEMPORAL_PROTOTYPE_METHOD3(Calendar, DateAdd, dateAdd)
-TEMPORAL_PROTOTYPE_METHOD2(Calendar, DateFromFields, dateFromFields)
-TEMPORAL_PROTOTYPE_METHOD3(Calendar, DateUntil, dateUntil)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, Day, day)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, DaysInMonth, daysInMonth)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, DaysInWeek, daysInWeek)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, DaysInYear, daysInYear)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, DayOfWeek, dayOfWeek)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, DayOfYear, dayOfYear)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, InLeapYear, inLeapYear)
-TEMPORAL_PROTOTYPE_METHOD2(Calendar, MergeFields, mergeFields)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, Month, month)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, MonthCode, monthCode)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, MonthsInYear, monthsInYear)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, Year, year)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, WeekOfYear, weekOfYear)
+#define TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(METHOD, name)                     \
+  BUILTIN(TemporalCalendarPrototype##METHOD) {                                \
+    HandleScope scope{isolate};                                               \
+    CHECK_RECEIVER(JSTemporalCalendar, obj,                                   \
+                   "Temporal.Calendar.prototype." #name);                     \
+    RETURN_RESULT_OR_FAILURE(                                                 \
+        isolate, JSTemporalCalendar::METHOD(isolate, obj->calendar_index(),   \
+                                            args.atOrUndefined(isolate, 1))); \
+  }
+
+#define TEMPORAL_CALENDAR_PROTOTYPE_METHOD2(METHOD, name)                     \
+  BUILTIN(TemporalCalendarPrototype##METHOD) {                                \
+    HandleScope scope{isolate};                                               \
+    CHECK_RECEIVER(JSTemporalCalendar, obj,                                   \
+                   "Temporal.Calendar.prototype." #name);                     \
+    RETURN_RESULT_OR_FAILURE(                                                 \
+        isolate, JSTemporalCalendar::METHOD(isolate, obj->calendar_index(),   \
+                                            args.atOrUndefined(isolate, 1),   \
+                                            args.atOrUndefined(isolate, 2))); \
+  }
+
+#define TEMPORAL_CALENDAR_PROTOTYPE_METHOD3(METHOD, name)                     \
+  BUILTIN(TemporalCalendarPrototype##METHOD) {                                \
+    HandleScope scope{isolate};                                               \
+    CHECK_RECEIVER(JSTemporalCalendar, obj,                                   \
+                   "Temporal.Calendar.prototype." #name);                     \
+    RETURN_RESULT_OR_FAILURE(                                                 \
+        isolate, JSTemporalCalendar::METHOD(isolate, obj->calendar_index(),   \
+                                            args.atOrUndefined(isolate, 1),   \
+                                            args.atOrUndefined(isolate, 2),   \
+                                            args.atOrUndefined(isolate, 3))); \
+  }
+
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD3(DateAdd, dateAdd)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD2(DateFromFields, dateFromFields)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD3(DateUntil, dateUntil)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(Day, day)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(DaysInMonth, daysInMonth)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(DaysInWeek, daysInWeek)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(DaysInYear, daysInYear)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(DayOfWeek, dayOfWeek)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(DayOfYear, dayOfYear)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(Fields, fields)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(InLeapYear, inLeapYear)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD2(MergeFields, mergeFields)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(Month, month)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(MonthCode, monthCode)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(MonthsInYear, monthsInYear)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(Year, year)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(WeekOfYear, weekOfYear)
 // #sec-temporal.calendar.from
 BUILTIN(TemporalCalendarFrom) {
   HandleScope scope(isolate);
@@ -661,17 +702,51 @@ BUILTIN(TemporalCalendarFrom) {
 }
 
 // TimeZone
+#define TEMPORAL_TIME_ZONE_PROTOTYPE_METHOD1(METHOD, name)                    \
+  BUILTIN(TemporalTimeZonePrototype##METHOD) {                                \
+    HandleScope scope{isolate};                                               \
+    CHECK_RECEIVER(JSTemporalTimeZone, obj,                                   \
+                   "Temporal.TimeZone.prototype." #name);                     \
+    TimeZoneDataRecord time_zone_rec{obj};                                    \
+    RETURN_RESULT_OR_FAILURE(                                                 \
+        isolate, JSTemporalTimeZone::METHOD(isolate, time_zone_rec,           \
+                                            args.atOrUndefined(isolate, 1))); \
+  }
+
+#define TEMPORAL_TIME_ZONE_PROTOTYPE_METHOD2(METHOD, name)                    \
+  BUILTIN(TemporalTimeZonePrototype##METHOD) {                                \
+    HandleScope scope{isolate};                                               \
+    CHECK_RECEIVER(JSTemporalTimeZone, obj,                                   \
+                   "Temporal.TimeZone.prototype." #name);                     \
+    TimeZoneDataRecord time_zone_rec{obj};                                    \
+    RETURN_RESULT_OR_FAILURE(                                                 \
+        isolate, JSTemporalTimeZone::METHOD(isolate, time_zone_rec,           \
+                                            args.atOrUndefined(isolate, 1),   \
+                                            args.atOrUndefined(isolate, 2))); \
+  }
+
 TEMPORAL_CONSTRUCTOR1(TimeZone)
-TEMPORAL_PROTOTYPE_METHOD2(TimeZone, GetInstantFor, getInstantFor)
-TEMPORAL_PROTOTYPE_METHOD1(TimeZone, GetNextTransition, getNextTransition)
-TEMPORAL_PROTOTYPE_METHOD1(TimeZone, GetOffsetNanosecondsFor,
-                           getOffsetNanosecondsFor)
-TEMPORAL_PROTOTYPE_METHOD1(TimeZone, GetOffsetStringFor, getOffsetStringFor)
-TEMPORAL_PROTOTYPE_METHOD2(TimeZone, GetPlainDateTimeFor, getPlainDateTimeFor)
-TEMPORAL_PROTOTYPE_METHOD1(TimeZone, GetPossibleInstantsFor,
-                           getPossibleInstantFor)
-TEMPORAL_PROTOTYPE_METHOD1(TimeZone, GetPreviousTransition,
-                           getPreviousTransition)
+TEMPORAL_TIME_ZONE_PROTOTYPE_METHOD2(GetInstantFor, getInstantFor)
+TEMPORAL_TIME_ZONE_PROTOTYPE_METHOD1(GetNextTransition, getNextTransition)
+BUILTIN(TemporalTimeZonePrototypeGetOffsetNanosecondsFor) {
+  HandleScope scope{isolate};
+  CHECK_RECEIVER(JSTemporalTimeZone, obj,
+                 "Temporal.TimeZone.prototype.getOffsetNanosecondsFor");
+  TimeZoneDataRecord time_zone_rec{obj};
+  int64_t offset_ns;
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, offset_ns,
+      JSTemporalTimeZone::GetOffsetNanosecondsFor(
+          isolate, time_zone_rec, args.atOrUndefined(isolate, 1)),
+      Tagged<Object>{});
+  return *isolate->factory()->NewNumberFromInt64(offset_ns);
+}
+TEMPORAL_TIME_ZONE_PROTOTYPE_METHOD1(GetOffsetStringFor, getOffsetStringFor)
+TEMPORAL_TIME_ZONE_PROTOTYPE_METHOD2(GetPlainDateTimeFor, getPlainDateTimeFor)
+TEMPORAL_TIME_ZONE_PROTOTYPE_METHOD1(GetPossibleInstantsFor,
+                                     getPossibleInstantsFor)
+TEMPORAL_TIME_ZONE_PROTOTYPE_METHOD1(GetPreviousTransition,
+                                     getPreviousTransition)
 
 // #sec-get-temporal.timezone.prototype.id
 BUILTIN(TemporalTimeZonePrototypeId) {
@@ -706,8 +781,9 @@ BUILTIN(TemporalTimeZonePrototypeToString) {
   // [[InitializedTemporalTimeZone]]).
   CHECK_RECEIVER(JSTemporalTimeZone, time_zone, method_name);
   // 3. Return timeZone.[[Identifier]].
-  RETURN_RESULT_OR_FAILURE(
-      isolate, JSTemporalTimeZone::ToString(isolate, time_zone, method_name));
+  TimeZoneDataRecord time_zone_rec{time_zone};
+  RETURN_RESULT_OR_FAILURE(isolate, JSTemporalTimeZone::ToString(
+                                        isolate, time_zone_rec, method_name));
 }
 
 // #sec-temporal.timezone.from
@@ -720,8 +796,8 @@ BUILTIN(TemporalTimeZoneFrom) {
 
 #ifdef V8_INTL_SUPPORT
 // Temporal.Calendar.prototype.era/eraYear
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, Era, era)
-TEMPORAL_PROTOTYPE_METHOD1(Calendar, EraYear, eraYEar)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(Era, era)
+TEMPORAL_CALENDAR_PROTOTYPE_METHOD1(EraYear, eraYEar)
 #endif  // V8_INTL_SUPPORT
 }  // namespace internal
 }  // namespace v8

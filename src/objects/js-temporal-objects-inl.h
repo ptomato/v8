@@ -90,19 +90,32 @@ BIT_FIELD_ACCESSORS(JSTemporalCalendar, flags, calendar_index,
                     JSTemporalCalendar::CalendarIndexBits)
 
 BOOL_ACCESSORS(JSTemporalTimeZone, flags, is_offset, IsOffsetBit::kShift)
+BOOL_ACCESSORS(JSTemporalZonedDateTime, time_zone_flags, time_zone_is_offset,
+               IsOffsetBit::kShift)
 
 // Special handling of sign
 TEMPORAL_INLINE_SIGNED_GETTER_SETTER(JSTemporalTimeZone, flags,
                                      offset_milliseconds, -24 * 60 * 60 * 1000,
                                      24 * 60 * 60 * 1000,
                                      OffsetMillisecondsOrTimeZoneIndex)
+TEMPORAL_INLINE_SIGNED_GETTER_SETTER(JSTemporalZonedDateTime, time_zone_flags,
+                                     time_zone_offset_milliseconds,
+                                     -24 * 60 * 60 * 1000, 24 * 60 * 60 * 1000,
+                                     OffsetMillisecondsOrTimeZoneIndex)
 
 TEMPORAL_INLINE_SIGNED_GETTER_SETTER(JSTemporalTimeZone, details,
                                      offset_sub_milliseconds, -1000000, 1000000,
                                      OffsetSubMilliseconds)
+TEMPORAL_INLINE_SIGNED_GETTER_SETTER(JSTemporalZonedDateTime, time_zone_details,
+                                     time_zone_offset_sub_milliseconds,
+                                     -1'000'000, 1'000'000,
+                                     OffsetSubMilliseconds)
 
 BIT_FIELD_ACCESSORS(JSTemporalTimeZone, flags,
                     offset_milliseconds_or_time_zone_index,
+                    JSTemporalTimeZone::OffsetMillisecondsOrTimeZoneIndexBits)
+BIT_FIELD_ACCESSORS(JSTemporalZonedDateTime, time_zone_flags,
+                    time_zone_offset_milliseconds_or_time_zone_index,
                     JSTemporalTimeZone::OffsetMillisecondsOrTimeZoneIndexBits)
 
 }  // namespace internal

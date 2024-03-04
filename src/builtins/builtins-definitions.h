@@ -1161,14 +1161,8 @@ namespace internal {
   CPP(TemporalConstructorDispatcher)                                           \
   CPP(TemporalStaticMethodDispatcher)                                          \
   CPP(TemporalPrototypeMethodDispatcher)                                       \
-  /* Temporal #sec-temporal.calendar.prototype.fields */                       \
-  TFJ(TemporalCalendarPrototypeFields, kJSArgcReceiverSlots, kIterable)        \
   /* Temporal #sec-date.prototype.totemporalinstant */                         \
-  CPP(DatePrototypeToTemporalInstant)                                          \
-                                                                               \
-  /* "Private" (created but not exposed) Bulitins needed by Temporal */        \
-  TFJ(StringFixedArrayFromIterable, kJSArgcReceiverSlots, kIterable)           \
-  TFJ(TemporalInstantFixedArrayFromIterable, kJSArgcReceiverSlots, kIterable)
+  CPP(DatePrototypeToTemporalInstant)
 
 #define BUILTIN_LIST_BASE(CPP, TFJ, TFC, TFS, TFH, ASM) \
   BUILTIN_LIST_BASE_TIER0(CPP, TFJ, TFC, TFS, TFH, ASM) \

@@ -203,8 +203,6 @@ enum ContextLookupFlags {
   V(JS_WEAK_REF_FUNCTION_INDEX, JSFunction, js_weak_ref_fun)                   \
   V(JS_FINALIZATION_REGISTRY_FUNCTION_INDEX, JSFunction,                       \
     js_finalization_registry_fun)                                              \
-  V(JS_TEMPORAL_CALENDAR_FUNCTION_INDEX, JSFunction,                           \
-    temporal_calendar_function)                                                \
   V(JS_TEMPORAL_DURATION_FUNCTION_INDEX, JSFunction,                           \
     temporal_duration_function)                                                \
   V(JS_TEMPORAL_INSTANT_FUNCTION_INDEX, JSFunction, temporal_instant_function) \
@@ -214,18 +212,12 @@ enum ContextLookupFlags {
     temporal_plain_date_time_function)                                         \
   V(JS_TEMPORAL_PLAIN_TIME_FUNCTION_INDEX, JSFunction,                         \
     temporal_plain_time_function)                                              \
-  V(JS_TEMPORAL_TIME_ZONE_FUNCTION_INDEX, JSFunction,                          \
-    temporal_time_zone_function)                                               \
   V(JS_TEMPORAL_ZONED_DATE_TIME_FUNCTION_INDEX, JSFunction,                    \
     temporal_zoned_date_time_function)                                         \
   V(JSON_OBJECT, JSObject, json_object)                                        \
   V(PROMISE_WITHRESOLVERS_RESULT_MAP_INDEX, Map,                               \
     promise_withresolvers_result_map)                                          \
   V(TEMPORAL_OBJECT_INDEX, HeapObject, temporal_object)                        \
-  V(TEMPORAL_INSTANT_FIXED_ARRAY_FROM_ITERABLE_FUNCTION_INDEX, JSFunction,     \
-    temporal_instant_fixed_array_from_iterable)                                \
-  V(STRING_FIXED_ARRAY_FROM_ITERABLE_FUNCTION_INDEX, JSFunction,               \
-    string_fixed_array_from_iterable)                                          \
   /* Context maps */                                                           \
   V(META_MAP_INDEX, Map, meta_map)                                             \
   V(FUNCTION_CONTEXT_MAP_INDEX, Map, function_context_map)                     \

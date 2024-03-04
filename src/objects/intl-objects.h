@@ -396,12 +396,6 @@ class Intl {
 
   // Functions to support Temporal
 
-  // Return the epoch of transition in BigInt or null if there are no
-  // transition.
-  static Handle<Object> GetTimeZoneOffsetTransitionNanoseconds(
-      Isolate* isolate, int32_t time_zone_index,
-      Handle<BigInt> nanosecond_epoch, Transition transition);
-
   // Return the Time Zone offset, in the unit of nanosecond by int64_t, during
   // the time of the nanosecond_epoch.
   static int64_t GetTimeZoneOffsetNanoseconds(Isolate* isolate,

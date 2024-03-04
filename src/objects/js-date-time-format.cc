@@ -880,17 +880,14 @@ Maybe<DateTimeValueRecord> TemporalPlainDateTimeToRecord(
   // TODO(ftang): we should change the return type of GetTimeZone() to
   // Handle<String> by ensure it will not return undefined.
   CHECK(IsString(*time_zone_obj));
-  Handle<JSTemporalTimeZone> time_zone =
-      temporal::CreateTemporalTimeZone(isolate,
-                                       Handle<String>::cast(time_zone_obj))
-          .ToHandleChecked();
+  TimeZoneDataRecord time_zone_rec{isolate, Handle<String>::cast(time_zone_obj)};
   // 9. Let instant be ? BuiltinTimeZoneGetInstantFor(timeZone, plainDateTime,
   // "compatible").
   Handle<JSTemporalInstant> instant;
   ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, instant,
-      temporal::BuiltinTimeZoneGetInstantForCompatible(
-          isolate, time_zone, plain_date_time, method_name),
+      temporal::GetInstantForCompatible(
+          isolate, time_zone_rec, plain_date_time, method_name),
       Nothing<DateTimeValueRecord>());
   // 10. If pattern is null, throw a TypeError exception.
 
@@ -903,7 +900,7 @@ Maybe<DateTimeValueRecord> TemporalPlainDateTimeToRecord(
 template <typename T>
 Maybe<DateTimeValueRecord> TemporalToRecord(
     Isolate* isolate, const icu::SimpleDateFormat& date_time_format,
-    PatternKind kind, Handle<T> temporal, Handle<JSReceiver> calendar,
+    PatternKind kind, Handle<T> temporal, int calendar_index,
     const char* method_name) {
   // 7. Let plainDateTime be ? CreateTemporalDateTime(temporalDate.[[ISOYear]],
   // temporalDate.[[ISOMonth]], temporalDate.[[ISODay]], 12, 0, 0, 0, 0, 0,
@@ -915,7 +912,7 @@ Maybe<DateTimeValueRecord> TemporalToRecord(
           isolate,
           {{temporal->iso_year(), temporal->iso_month(), temporal->iso_day()},
            {12, 0, 0, 0, 0, 0}},
-          calendar),
+          calendar_index),
       Nothing<DateTimeValueRecord>());
   return TemporalPlainDateTimeToRecord(isolate, date_time_format, kind,
                                        plain_date_time, method_name);
@@ -931,26 +928,19 @@ Maybe<DateTimeValueRecord> HandleDateTimeTemporalDate(
   // 2. Let pattern be dateTimeFormat.[[TemporalPlainDatePattern]].
 
   // 3. Let calendar be ? ToString(temporalDate.[[Calendar]]).
-  Handle<String> calendar;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, calendar,
-      Object::ToString(isolate, handle(temporal_date->calendar(), isolate)),
-      Nothing<DateTimeValueRecord>());
+  Handle<String> calendar = temporal::CalendarIdentifier(isolate, temporal_date->calendar());
 
   // 4. If calendar is dateTimeFormat.[[Calendar]], then
-  Handle<JSReceiver> calendar_override;
+  int calendar_override;
   if (String::Equals(isolate, calendar, date_time_format_calendar)) {
     // a. Let calendarOverride be temporalDate.[[Calendar]].
-    calendar_override = handle(temporal_date->calendar(), isolate);
+    calendar_override = temporal_date->calendar();
     // 5. Else if calendar is "iso8601", then
   } else if (String::Equals(isolate, calendar,
                             isolate->factory()->iso8601_string())) {
     // a. Let calendarOverride be ?
     // GetBuiltinCalendar(dateTimeFormat.[[Calendar]]).
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, calendar_override,
-        temporal::GetBuiltinCalendar(isolate, date_time_format_calendar),
-        Nothing<DateTimeValueRecord>());
+    calendar_override = temporal::CalendarIndex(isolate, date_time_format_calendar);
     // 6. Else,
   } else {
     // a. Throw a RangeError exception.
@@ -972,14 +962,9 @@ Maybe<DateTimeValueRecord> HandleDateTimeTemporalDateTime(
   // 1. Assert: dateTime has an [[InitializedTemporalDateTime]] internal slot.
   // 2. Let pattern be dateTimeFormat.[[TemporalPlainDateTimePattern]].
   // 3. Let calendar be ? ToString(dateTime.[[Calendar]]).
-  Handle<String> calendar;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, calendar,
-      Object::ToString(isolate, handle(date_time->calendar(), isolate)),
-      Nothing<DateTimeValueRecord>());
+  Handle<String> calendar = temporal::CalendarIdentifier(isolate, date_time->calendar());
   // 4. If calendar is not "iso8601" and not equal to
   // dateTimeFormat.[[Calendar]], then
-  Handle<JSReceiver> calendar_override;
   if (!String::Equals(isolate, calendar,
                       isolate->factory()->iso8601_string()) &&
       !String::Equals(isolate, calendar, date_time_format_calendar)) {
@@ -1014,14 +999,9 @@ Maybe<DateTimeValueRecord> HandleDateTimeTemporalZonedDateTime(
   // 2. Let pattern be dateTimeFormat.[[TemporalZonedDateTimePattern]].
 
   // 3. Let calendar be ? ToString(zonedDateTime.[[Calendar]]).
-  Handle<String> calendar;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, calendar,
-      Object::ToString(isolate, handle(zoned_date_time->calendar(), isolate)),
-      Nothing<DateTimeValueRecord>());
+  Handle<String> calendar = temporal::CalendarIdentifier(isolate, zoned_date_time->calendar());
   // 4. If calendar is not "iso8601" and not equal to
   // dateTimeFormat.[[Calendar]], then
-  Handle<JSReceiver> calendar_override;
   if (!String::Equals(isolate, calendar,
                       isolate->factory()->iso8601_string()) &&
       !String::Equals(isolate, calendar, date_time_format_calendar)) {
@@ -1033,11 +1013,8 @@ Maybe<DateTimeValueRecord> HandleDateTimeTemporalZonedDateTime(
         Nothing<DateTimeValueRecord>());
   }
   // 5. Let timeZone be ? ToString(zonedDateTime.[[TimeZone]]).
-  Handle<String> time_zone;
-  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, time_zone,
-      Object::ToString(isolate, handle(zoned_date_time->time_zone(), isolate)),
-      Nothing<DateTimeValueRecord>());
+  TimeZoneDataRecord time_zone_rec{zoned_date_time};
+  Handle<String> time_zone = time_zone_rec.ToIdentifier(isolate);
   // 6. If dateTimeFormat.[[TimeZone]] is not equal to DefaultTimeZone(), and
   // timeZone is not equal to dateTimeFormat.[[TimeZone]], then
   Handle<Object> date_time_format_time_zone =
@@ -1089,8 +1066,6 @@ Maybe<DateTimeValueRecord> HandleDateTimeTemporalTime(
   // 2. Let pattern be dateTimeFormat.[[TemporalPlainTimePattern]].
 
   // 3. Let isoCalendar be ! GetISO8601Calendar().
-
-  Handle<JSReceiver> iso_calendar = temporal::GetISO8601Calendar(isolate);
   // 4. Let plainDateTime be ? CreateTemporalDateTime(1970, 1, 1,
   // temporalTime.[[ISOHour]], temporalTime.[[ISOMinute]],
   // temporalTime.[[ISOSecond]], temporalTime.[[ISOMillisecond]],
@@ -1105,7 +1080,7 @@ Maybe<DateTimeValueRecord> HandleDateTimeTemporalTime(
            {temporal_time->iso_hour(), temporal_time->iso_minute(),
             temporal_time->iso_second(), temporal_time->iso_millisecond(),
             temporal_time->iso_microsecond(), temporal_time->iso_nanosecond()}},
-          iso_calendar),
+          0),
       Nothing<DateTimeValueRecord>());
   return TemporalPlainDateTimeToRecord(isolate, date_time_format,
                                        PatternKind::kPlainTime, plain_date_time,

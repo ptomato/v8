@@ -29,8 +29,8 @@ namespace internal {
   }
 
 static const char* temporal_constructor_names[] = {
-    "Calendar",      "Duration",  "Instant",  "Now",           "PlainDate",
-    "PlainDateTime", "PlainTime", "TimeZone", "ZonedDateTime",
+    "Duration",      "Instant",   "Now",           "PlainDate",
+    "PlainDateTime", "PlainTime", "ZonedDateTime",
 };
 static_assert(
     sizeof(temporal_constructor_names) / sizeof(*temporal_constructor_names) ==
@@ -107,16 +107,6 @@ BUILTIN(TemporalConstructorDispatcher) {
                                JSTemporalInstant::Constructor(
                                    isolate, args.target(), args.new_target(),
                                    args.atOrUndefined(isolate, 1)));
-    case kCalendar:
-      RETURN_RESULT_OR_FAILURE(isolate,
-                               JSTemporalCalendar::Constructor(
-                                   isolate, args.target(), args.new_target(),
-                                   args.atOrUndefined(isolate, 1)));
-    case kTimeZone:
-      RETURN_RESULT_OR_FAILURE(isolate,
-                               JSTemporalTimeZone::Constructor(
-                                   isolate, args.target(), args.new_target(),
-                                   args.atOrUndefined(isolate, 1)));
     case kNow:
     case kNumTemporalConstructors:
       UNREACHABLE();
@@ -180,7 +170,7 @@ BUILTIN(TemporalStaticMethodDispatcher) {
   switch (ctor_type) {
     case kNow:
       if (prop->Equals(*factory->timeZone_string())) {
-        RETURN_RESULT_OR_FAILURE(isolate, JSTemporalTimeZone::Now(isolate));
+        return *temporal::DefaultTimeZone(isolate);
       }
       if (prop->Equals(*factory->plainDate_string())) {
         RETURN_RESULT_OR_FAILURE(
@@ -235,22 +225,6 @@ BUILTIN(TemporalStaticMethodDispatcher) {
       DISPATCH_STRCMP_METHOD1(Instant, FromEpochNanoseconds,
                               fromEpochNanoseconds);
       UNREACHABLE();
-    case kCalendar:
-      if (prop->Equals(*factory->from_string())) {
-        RETURN_RESULT_OR_FAILURE(isolate,
-                                 temporal::ToTemporalCalendar(
-                                     isolate, args.atOrUndefined(isolate, 1),
-                                     "Temporal.Calendar.from"));
-      }
-      UNREACHABLE();
-    case kTimeZone:
-      if (prop->Equals(*factory->from_string())) {
-        RETURN_RESULT_OR_FAILURE(isolate,
-                                 temporal::ToTemporalTimeZone(
-                                     isolate, args.atOrUndefined(isolate, 1),
-                                     "Temporal.TimeZone.from"));
-      }
-      UNREACHABLE();
     case kNumTemporalConstructors:
       UNREACHABLE();
   }
@@ -296,6 +270,10 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
 #define DISPATCH_ISO_GETTER(field)                \
   if (prop->Equals(*factory->field##_string())) { \
     return Smi::FromInt(obj->iso_##field());      \
+  }
+#define DISPATCH_CALENDAR_GETTER                                    \
+  if (prop->Equals(*factory->calendar_string())) {                  \
+    return *temporal::CalendarIdentifier(isolate, obj->calendar()); \
   }
 #define DISPATCH_SCALED_EXACT_TIME_GETTER(cc_name, scale, is_bigint)   \
   if (prop->Equals(*factory->cc_name##_string())) {                    \
@@ -366,7 +344,7 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
   switch (ctor_type) {
     case kPlainDate: {
       CHECK_RECEIVER(JSTemporalPlainDate, obj, method_name.c_str());
-      DISPATCH_DIRECT_GETTER(calendar, calendar);
+      DISPATCH_CALENDAR_GETTER;
       DISPATCH_METHOD1(PlainDate, ToString, toString);
       DISPATCH_METHOD2(PlainDate, Add, add);
       DISPATCH_METHOD2(PlainDate, With, with);
@@ -387,9 +365,9 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
           prop->Equals(*factory->daysInYear_string()) ||
           prop->Equals(*factory->monthsInYear_string()) ||
           prop->Equals(*factory->inLeapYear_string())) {
-        Handle<JSReceiver> calendar{obj->calendar(), isolate};
-        RETURN_RESULT_OR_FAILURE(isolate, temporal::InvokeCalendarMethod(
-                                              isolate, calendar, prop, obj));
+        RETURN_RESULT_OR_FAILURE(
+            isolate, temporal::InvokeCalendarMethod(isolate, obj->calendar(),
+                                                    prop, obj));
       }
       DISPATCH_VALUEOF(PlainDate);
       DISPATCH_STRCMP_METHOD2(PlainDate, Subtract, subtract);
@@ -405,7 +383,6 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
     }
     case kPlainTime: {
       CHECK_RECEIVER(JSTemporalPlainTime, obj, method_name.c_str());
-      DISPATCH_DIRECT_GETTER(calendar, calendar);
       DISPATCH_ISO_GETTER(hour);
       DISPATCH_ISO_GETTER(minute);
       DISPATCH_ISO_GETTER(second);
@@ -430,7 +407,7 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
     }
     case kPlainDateTime: {
       CHECK_RECEIVER(JSTemporalPlainDateTime, obj, method_name.c_str());
-      DISPATCH_DIRECT_GETTER(calendar, calendar);
+      DISPATCH_CALENDAR_GETTER;
       DISPATCH_ISO_GETTER(hour);
       DISPATCH_ISO_GETTER(minute);
       DISPATCH_ISO_GETTER(second);
@@ -457,9 +434,9 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
           prop->Equals(*factory->daysInYear_string()) ||
           prop->Equals(*factory->monthsInYear_string()) ||
           prop->Equals(*factory->inLeapYear_string())) {
-        Handle<JSReceiver> calendar{obj->calendar(), isolate};
-        RETURN_RESULT_OR_FAILURE(isolate, temporal::InvokeCalendarMethod(
-                                              isolate, calendar, prop, obj));
+        RETURN_RESULT_OR_FAILURE(
+            isolate, temporal::InvokeCalendarMethod(isolate, obj->calendar(),
+                                                    prop, obj));
       }
       DISPATCH_VALUEOF(PlainDateTime);
       DISPATCH_STRCMP_METHOD1(PlainDateTime, WithCalendar, withCalendar);
@@ -479,8 +456,10 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
     }
     case kZonedDateTime: {
       CHECK_RECEIVER(JSTemporalZonedDateTime, obj, method_name.c_str());
-      DISPATCH_DIRECT_GETTER(calendar, calendar);
-      DISPATCH_DIRECT_GETTER(time_zone, timeZone);
+      DISPATCH_CALENDAR_GETTER;
+      if (prop->Equals(*factory->timeZone_string())) {
+        return *TimeZoneDataRecord{obj}.ToIdentifier(isolate);
+      }
       DISPATCH_DIRECT_GETTER(nanoseconds, epochNanoseconds);
       DISPATCH_SCALED_EXACT_TIME_GETTER(epochMicroseconds, 1000, true);
       DISPATCH_SCALED_EXACT_TIME_GETTER(epochMilliseconds, 1'000'000, false);
@@ -509,7 +488,7 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
           prop->Equals(*factory->monthsInYear_string()) ||
           prop->Equals(*factory->inLeapYear_string())) {
         // 3. Let timeZone be zonedDateTime.[[TimeZone]].
-        Handle<JSReceiver> time_zone{obj->time_zone(), isolate};
+        TimeZoneDataRecord time_zone_rec{obj};
         // 4. Let instant be ?
         // CreateTemporalInstant(zonedDateTime.[[Nanoseconds]]).
         Handle<JSTemporalInstant> instant;
@@ -518,18 +497,16 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
             isolate, instant,
             temporal::CreateTemporalInstant(isolate, epoch_nanoseconds));
         // 5. Let calendar be zonedDateTime.[[Calendar]].
-        Handle<JSReceiver> calendar{obj->calendar(), isolate};
+        int calendar_index = obj->calendar();
         // 6. Let temporalDateTime be ? GetPlainDateTimeFor(timeZone, instant,
         //    calendar).
-        Handle<JSTemporalPlainDateTime> arg;
-        ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
-            isolate, arg,
-            temporal::BuiltinTimeZoneGetPlainDateTimeFor(
-                isolate, time_zone, instant, calendar,
-                prop->ToCString().get()));
+        Handle<JSTemporalPlainDateTime> arg = temporal::GetPlainDateTimeFor(
+            isolate, time_zone_rec, instant, calendar_index,
+            prop->ToCString().get());
 
-        RETURN_RESULT_OR_FAILURE(isolate, temporal::InvokeCalendarMethod(
-                                              isolate, calendar, prop, arg));
+        RETURN_RESULT_OR_FAILURE(
+            isolate,
+            temporal::InvokeCalendarMethod(isolate, calendar_index, prop, arg));
       }
       if (prop->Equals(*factory->hour_string()) ||
           prop->Equals(*factory->minute_string()) ||
@@ -538,7 +515,7 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
           prop->Equals(*factory->microsecond_string()) ||
           prop->Equals(*factory->nanosecond_string())) {
         // 3. Let timeZone be zonedDateTime.[[TimeZone]].
-        Handle<JSReceiver> time_zone{obj->time_zone(), isolate};
+        TimeZoneDataRecord time_zone_rec{obj};
         // 4. Let instant be ?
         // CreateTemporalInstant(zonedDateTime.[[Nanoseconds]]).
         Handle<JSTemporalInstant> instant;
@@ -547,15 +524,12 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
             isolate, instant,
             temporal::CreateTemporalInstant(isolate, epoch_nanoseconds));
         // 5. Let calendar be zonedDateTime.[[Calendar]].
-        Handle<JSReceiver> calendar{obj->calendar(), isolate};
+        int calendar_index = obj->calendar();
         // 6. Let temporalDateTime be ? GetPlainDateTimeFor(timeZone, instant,
         //    calendar).
-        Handle<JSTemporalPlainDateTime> arg;
-        ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
-            isolate, arg,
-            temporal::BuiltinTimeZoneGetPlainDateTimeFor(
-                isolate, time_zone, instant, calendar,
-                prop->ToCString().get()));
+        Handle<JSTemporalPlainDateTime> arg = temporal::GetPlainDateTimeFor(
+            isolate, time_zone_rec, instant, calendar_index,
+            prop->ToCString().get());
 
         {
           Handle<JSTemporalPlainDateTime> obj = arg;  // shadow outer 'obj'
@@ -634,78 +608,13 @@ BUILTIN(TemporalPrototypeMethodDispatcher) {
       DISPATCH_STRCMP_METHOD2(Instant, Until, until);
       UNREACHABLE();
     }
-    case kCalendar: {
-      CHECK_RECEIVER(JSTemporalCalendar, obj, method_name.c_str());
-      // #sec-temporal.calendar.prototype.tostring
-      if (prop->Equals(*factory->toString_string())) {
-        // 3. Return calendar.[[Identifier]].
-        RETURN_RESULT_OR_FAILURE(
-            isolate,
-            JSTemporalCalendar::ToString(isolate, obj, method_name.c_str()));
-      }
-      // #sec-temporal.calendar.prototype.tojson/id
-      if (prop->Equals(*factory->id_string()) ||
-          prop->Equals(*factory->toJSON_string())) {
-        // 3. Return ? ToString(calendar).
-        RETURN_RESULT_OR_FAILURE(isolate, Object::ToString(isolate, obj));
-      }
-      DISPATCH_METHOD3(Calendar, DateAdd, dateAdd);
-      DISPATCH_METHOD2(Calendar, DateFromFields, dateFromFields);
-      DISPATCH_METHOD3(Calendar, DateUntil, dateUntil);
-      DISPATCH_METHOD1(Calendar, Day, day);
-      DISPATCH_METHOD1(Calendar, DaysInMonth, daysInMonth);
-      DISPATCH_METHOD1(Calendar, DaysInWeek, daysInWeek);
-      DISPATCH_METHOD1(Calendar, DaysInYear, daysInYear);
-      DISPATCH_METHOD1(Calendar, DayOfWeek, dayOfWeek);
-      DISPATCH_METHOD1(Calendar, DayOfYear, dayOfYear);
-      DISPATCH_METHOD1(Calendar, InLeapYear, inLeapYear);
-      DISPATCH_METHOD2(Calendar, MergeFields, mergeFields);
-      DISPATCH_METHOD1(Calendar, Month, month);
-      DISPATCH_METHOD1(Calendar, MonthCode, monthCode);
-      DISPATCH_METHOD1(Calendar, MonthsInYear, monthsInYear);
-      DISPATCH_METHOD1(Calendar, Year, year);
-      DISPATCH_METHOD1(Calendar, WeekOfYear, weekOfYear);
-#ifdef V8_INTL_SUPPORT
-      DISPATCH_METHOD1(Calendar, Era, era);
-      DISPATCH_METHOD1(Calendar, EraYear, eraYear);
-#endif  // V8_INTL_SUPPORT
-      UNREACHABLE();
-    }
-    case kTimeZone: {
-      CHECK_RECEIVER(JSTemporalTimeZone, obj, method_name.c_str());
-      // #sec-temporal.timezone.prototype.tostring
-      if (prop->Equals(*factory->toString_string())) {
-        // 3. Return timeZone.[[Identifier]].
-        RETURN_RESULT_OR_FAILURE(
-            isolate,
-            JSTemporalTimeZone::ToString(isolate, obj, method_name.c_str()));
-      }
-      // #sec-temporal.timezone.prototype.tojson/id
-      if (prop->Equals(*factory->id_string()) ||
-          prop->Equals(*factory->toJSON_string())) {
-        HandleScope scope(isolate);
-        // 3. Return ? ToString(timeZone).
-        RETURN_RESULT_OR_FAILURE(isolate, Object::ToString(isolate, obj));
-      }
-      DISPATCH_METHOD1(TimeZone, GetOffsetNanosecondsFor,
-                       getOffsetNanosecondsFor);
-      DISPATCH_STRCMP_METHOD2(TimeZone, GetInstantFor, getInstantFor);
-      DISPATCH_STRCMP_METHOD1(TimeZone, GetNextTransition, getNextTransition);
-      DISPATCH_STRCMP_METHOD1(TimeZone, GetOffsetStringFor, getOffsetStringFor);
-      DISPATCH_STRCMP_METHOD2(TimeZone, GetPlainDateTimeFor,
-                              getPlainDateTimeFor);
-      DISPATCH_STRCMP_METHOD1(TimeZone, GetPossibleInstantsFor,
-                              getPossibleInstantsFor);
-      DISPATCH_STRCMP_METHOD1(TimeZone, GetPreviousTransition,
-                              getPreviousTransition);
-      UNREACHABLE();
-    }
     case kNow:
     case kNumTemporalConstructors:
       UNREACHABLE();
   }
 
 #undef DISPATCH_DIRECT_GETTER
+#undef DISPATCH_CALENDAR_GETTER
 #undef DISPATCH_ISO_GETTER
 #undef DISPATCH_SCALED_EXACT_TIME_GETTER
 #undef DISPATCH_METHOD0

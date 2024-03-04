@@ -1940,83 +1940,10 @@ Handle<JSObject> InitializeTemporal(Isolate* isolate) {
     INSTALL_TEMPORAL_METHOD(Instant, toZonedDateTime, 1)
     INSTALL_TEMPORAL_METHOD(Instant, toZonedDateTimeISO, 1)
   }
-  {  // -- T i m e Z o n e
-    // #sec-temporal-timezone-objects
-    // #sec-temporal.timezone
-    INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(TimeZone, TIME_ZONE, 1)
-    INSTALL_TEMPORAL_FUNC(TimeZone, from, 1)
-
-    INSTALL_TEMPORAL_GETTER(TimeZone, id)
-
-    INSTALL_TEMPORAL_METHOD(TimeZone, getOffsetNanosecondsFor, 1)
-    INSTALL_TEMPORAL_METHOD(TimeZone, getOffsetStringFor, 1)
-    INSTALL_TEMPORAL_METHOD(TimeZone, getPlainDateTimeFor, 1)
-    INSTALL_TEMPORAL_METHOD(TimeZone, getInstantFor, 1)
-    INSTALL_TEMPORAL_METHOD(TimeZone, getPossibleInstantsFor, 1)
-    INSTALL_TEMPORAL_METHOD(TimeZone, getNextTransition, 1)
-    INSTALL_TEMPORAL_METHOD(TimeZone, getPreviousTransition, 1)
-    INSTALL_TEMPORAL_METHOD(TimeZone, toString, 0)
-    INSTALL_TEMPORAL_METHOD(TimeZone, toJSON, 0)
-  }
-  {  // -- C a l e n d a r
-    // #sec-temporal-calendar-objects
-    // #sec-temporal.calendar
-    INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE(Calendar, CALENDAR, 1)
-    INSTALL_TEMPORAL_FUNC(Calendar, from, 1)
-
-    INSTALL_TEMPORAL_GETTER(Calendar, id)
-
-    INSTALL_TEMPORAL_METHOD(Calendar, dateFromFields, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, dateAdd, 2)
-    INSTALL_TEMPORAL_METHOD(Calendar, dateUntil, 2)
-    INSTALL_TEMPORAL_METHOD(Calendar, year, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, month, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, monthCode, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, day, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, dayOfWeek, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, dayOfYear, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, weekOfYear, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, daysInWeek, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, daysInMonth, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, daysInYear, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, monthsInYear, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, inLeapYear, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, mergeFields, 2)
-    INSTALL_TEMPORAL_METHOD(Calendar, toString, 0)
-    INSTALL_TEMPORAL_METHOD(Calendar, toJSON, 0)
-#ifdef V8_INTL_SUPPORT
-    INSTALL_TEMPORAL_METHOD(Calendar, era, 1)
-    INSTALL_TEMPORAL_METHOD(Calendar, eraYear, 1)
-#endif  // V8_INTL_SUPPORT
-
-    SimpleInstallFunction(isolate, prototype, "fields",
-                          Builtin::kTemporalCalendarPrototypeFields, 1, false);
-  }
 #undef INSTALL_TEMPORAL_CTOR_AND_PROTOTYPE
 #undef INSTALL_TEMPORAL_FUNC
 #undef INSTALL_TEMPORAL_GETTER
 #undef INSTALL_TEMPORAL_METHOD
-
-  // The StringListFromIterable functions is created but not
-  // exposed, as it is used internally by CalendarFields.
-  {
-    Handle<JSFunction> func =
-        SimpleCreateFunction(isolate,
-                             isolate->factory()->InternalizeUtf8String(
-                                 "StringFixedArrayFromIterable"),
-                             Builtin::kStringFixedArrayFromIterable, 1, false);
-    native_context->set_string_fixed_array_from_iterable(*func);
-  }
-  // The TemporalInsantFixedArrayFromIterable functions is created but not
-  // exposed, as it is used internally by GetPossibleInstantsFor.
-  {
-    Handle<JSFunction> func = SimpleCreateFunction(
-        isolate,
-        isolate->factory()->InternalizeUtf8String(
-            "TemporalInstantFixedArrayFromIterable"),
-        Builtin::kTemporalInstantFixedArrayFromIterable, 1, false);
-    native_context->set_temporal_instant_fixed_array_from_iterable(*func);
-  }
 
   native_context->set_temporal_object(*temporal);
   return temporal;

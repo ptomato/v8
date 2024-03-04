@@ -1529,8 +1529,8 @@ namespace internal {
   CPP(TemporalPlainDateFrom, kDontAdaptArgumentsSentinel)                      \
   /* Temporal #sec-temporal.plaindate.compare */                               \
   CPP(TemporalPlainDateCompare, kDontAdaptArgumentsSentinel)                   \
-  /* Temporal #sec-get-temporal.plaindate.prototype.calendar */                \
-  CPP(TemporalPlainDatePrototypeCalendar, JSParameterCount(0))                 \
+  /* Temporal #sec-get-temporal.plaindate.prototype.calendarid */              \
+  CPP(TemporalPlainDatePrototypeCalendarID, JSParameterCount(0))               \
   /* Temporal #sec-get-temporal.plaindate.prototype.year */                    \
   CPP(TemporalPlainDatePrototypeYear, JSParameterCount(0))                     \
   /* Temporal #sec-get-temporal.plaindate.prototype.month */                   \
@@ -1559,8 +1559,6 @@ namespace internal {
   CPP(TemporalPlainDatePrototypeToPlainYearMonth, kDontAdaptArgumentsSentinel) \
   /* Temporal #sec-temporal.plaindate.prototype.toplainmonthday */             \
   CPP(TemporalPlainDatePrototypeToPlainMonthDay, kDontAdaptArgumentsSentinel)  \
-  /* Temporal #sec-temporal.plaindate.prototype.getisofields */                \
-  CPP(TemporalPlainDatePrototypeGetISOFields, kDontAdaptArgumentsSentinel)     \
   /* Temporal #sec-temporal.plaindate.prototype.add */                         \
   CPP(TemporalPlainDatePrototypeAdd, kDontAdaptArgumentsSentinel)              \
   /* Temporal #sec-temporal.plaindate.prototype.substract */                   \
@@ -1595,8 +1593,6 @@ namespace internal {
   CPP(TemporalPlainTimeFrom, kDontAdaptArgumentsSentinel)                      \
   /* Temporal #sec-temporal.plaintime.compare */                               \
   CPP(TemporalPlainTimeCompare, kDontAdaptArgumentsSentinel)                   \
-  /* Temporal #sec-get-temporal.plaintime.prototype.calendar */                \
-  CPP(TemporalPlainTimePrototypeCalendar, JSParameterCount(0))                 \
   /* Temporal #sec-get-temporal.plaintime.prototype.hour */                    \
   CPP(TemporalPlainTimePrototypeHour, JSParameterCount(0))                     \
   /* Temporal #sec-get-temporal.plaintime.prototype.minute */                  \
@@ -1627,8 +1623,6 @@ namespace internal {
   CPP(TemporalPlainTimePrototypeToPlainDateTime, kDontAdaptArgumentsSentinel)  \
   /* Temporal #sec-temporal.plaintime.prototype.tozoneddatetime */             \
   CPP(TemporalPlainTimePrototypeToZonedDateTime, kDontAdaptArgumentsSentinel)  \
-  /* Temporal #sec-temporal.plaintime.prototype.getisofields */                \
-  CPP(TemporalPlainTimePrototypeGetISOFields, kDontAdaptArgumentsSentinel)     \
   /* Temporal #sec-temporal.plaintime.prototype.tostring */                    \
   CPP(TemporalPlainTimePrototypeToString, kDontAdaptArgumentsSentinel)         \
   /* Temporal #sec-temporal.plaindtimeprototype.tojson */                      \
@@ -1645,8 +1639,8 @@ namespace internal {
   CPP(TemporalPlainDateTimeFrom, kDontAdaptArgumentsSentinel)                  \
   /* Temporal #sec-temporal.plaindatetime.compare */                           \
   CPP(TemporalPlainDateTimeCompare, kDontAdaptArgumentsSentinel)               \
-  /* Temporal #sec-get-temporal.plaindatetime.prototype.calendar */            \
-  CPP(TemporalPlainDateTimePrototypeCalendar, JSParameterCount(0))             \
+  /* Temporal #sec-get-temporal.plaindatetime.prototype.calendarid */          \
+  CPP(TemporalPlainDateTimePrototypeCalendarID, JSParameterCount(0))           \
   /* Temporal #sec-get-temporal.plaindatetime.prototype.year */                \
   CPP(TemporalPlainDateTimePrototypeYear, JSParameterCount(0))                 \
   /* Temporal #sec-get-temporal.plaindatetime.prototype.month */               \
@@ -1727,8 +1721,6 @@ namespace internal {
       kDontAdaptArgumentsSentinel)                                             \
   /* Temporal #sec-temporal.plaindatetime.prototype.toplaintime */             \
   CPP(TemporalPlainDateTimePrototypeToPlainTime, kDontAdaptArgumentsSentinel)  \
-  /* Temporal #sec-temporal.plaindatetime.prototype.getisofields */            \
-  CPP(TemporalPlainDateTimePrototypeGetISOFields, kDontAdaptArgumentsSentinel) \
                                                                                \
   /* Temporal.ZonedDateTime */                                                 \
   /* Temporal #sec-temporal.zoneddatetime */                                   \
@@ -1737,10 +1729,10 @@ namespace internal {
   CPP(TemporalZonedDateTimeFrom, kDontAdaptArgumentsSentinel)                  \
   /* Temporal #sec-temporal.zoneddatetime.compare */                           \
   CPP(TemporalZonedDateTimeCompare, kDontAdaptArgumentsSentinel)               \
-  /* Temporal #sec-get-temporal.zoneddatetime.prototype.calendar */            \
-  CPP(TemporalZonedDateTimePrototypeCalendar, JSParameterCount(0))             \
-  /* Temporal #sec-get-temporal.zoneddatetime.prototype.timezone */            \
-  CPP(TemporalZonedDateTimePrototypeTimeZone, JSParameterCount(0))             \
+  /* Temporal #sec-get-temporal.zoneddatetime.prototype.calendarid */          \
+  CPP(TemporalZonedDateTimePrototypeCalendarID, JSParameterCount(0))           \
+  /* Temporal #sec-get-temporal.zoneddatetime.prototype.timezoneid */          \
+  CPP(TemporalZonedDateTimePrototypeTimeZoneID, JSParameterCount(0))           \
   /* Temporal #sec-get-temporal.zoneddatetime.prototype.year */                \
   CPP(TemporalZonedDateTimePrototypeYear, JSParameterCount(0))                 \
   /* Temporal #sec-get-temporal.zoneddatetime.prototype.month */               \
@@ -1841,8 +1833,6 @@ namespace internal {
   /* Temporal #sec-temporal.zoneddatetime.prototype.toplainmonthday */         \
   CPP(TemporalZonedDateTimePrototypeToPlainMonthDay,                           \
       kDontAdaptArgumentsSentinel)                                             \
-  /* Temporal #sec-temporal.zoneddatetime.prototype.getisofields */            \
-  CPP(TemporalZonedDateTimePrototypeGetISOFields, kDontAdaptArgumentsSentinel) \
                                                                                \
   /* Temporal.Duration */                                                      \
   /* Temporal #sec-temporal.duration */                                        \
@@ -1953,8 +1943,8 @@ namespace internal {
   CPP(TemporalPlainYearMonthFrom, kDontAdaptArgumentsSentinel)                 \
   /* Temporal #sec-temporal.plainyearmonth.compare */                          \
   CPP(TemporalPlainYearMonthCompare, kDontAdaptArgumentsSentinel)              \
-  /* Temporal #sec-get-temporal.plainyearmonth.prototype.calendar */           \
-  CPP(TemporalPlainYearMonthPrototypeCalendar, JSParameterCount(0))            \
+  /* Temporal #sec-get-temporal.plainyearmonth.prototype.calendarid */         \
+  CPP(TemporalPlainYearMonthPrototypeCalendarID, JSParameterCount(0))          \
   /* Temporal #sec-get-temporal.plainyearmonth.prototype.year */               \
   CPP(TemporalPlainYearMonthPrototypeYear, JSParameterCount(0))                \
   /* Temporal #sec-get-temporal.plainyearmonth.prototype.month */              \
@@ -1992,9 +1982,6 @@ namespace internal {
   CPP(TemporalPlainYearMonthPrototypeValueOf, kDontAdaptArgumentsSentinel)     \
   /* Temporal #sec-temporal.plainyearmonth.prototype.toplaindate */            \
   CPP(TemporalPlainYearMonthPrototypeToPlainDate, kDontAdaptArgumentsSentinel) \
-  /* Temporal #sec-temporal.plainyearmonth.prototype.getisofields */           \
-  CPP(TemporalPlainYearMonthPrototypeGetISOFields,                             \
-      kDontAdaptArgumentsSentinel)                                             \
                                                                                \
   /* Temporal.PlainMonthDay */                                                 \
   /* Temporal #sec-temporal.plainmonthday */                                   \
@@ -2003,8 +1990,8 @@ namespace internal {
   CPP(TemporalPlainMonthDayFrom, kDontAdaptArgumentsSentinel)                  \
   /* There are no compare for PlainMonthDay */                                 \
   /* See https://github.com/tc39/proposal-temporal/issues/1547 */              \
-  /* Temporal #sec-get-temporal.plainmonthday.prototype.calendar */            \
-  CPP(TemporalPlainMonthDayPrototypeCalendar, JSParameterCount(0))             \
+  /* Temporal #sec-get-temporal.plainmonthday.prototype.calendarid */          \
+  CPP(TemporalPlainMonthDayPrototypeCalendarID, JSParameterCount(0))           \
   /* Temporal #sec-get-temporal.plainmonthday.prototype.monthcode */           \
   CPP(TemporalPlainMonthDayPrototypeMonthCode, JSParameterCount(0))            \
   /* Temporal #sec-get-temporal.plainmonthday.prototype.day */                 \
@@ -2024,100 +2011,9 @@ namespace internal {
   CPP(TemporalPlainMonthDayPrototypeValueOf, kDontAdaptArgumentsSentinel)      \
   /* Temporal #sec-temporal.plainmonthday.prototype.toplaindate */             \
   CPP(TemporalPlainMonthDayPrototypeToPlainDate, kDontAdaptArgumentsSentinel)  \
-  /* Temporal #sec-temporal.plainmonthday.prototype.getisofields */            \
-  CPP(TemporalPlainMonthDayPrototypeGetISOFields, kDontAdaptArgumentsSentinel) \
                                                                                \
-  /* Temporal.TimeZone */                                                      \
-  /* Temporal #sec-temporal.timezone */                                        \
-  CPP(TemporalTimeZoneConstructor, kDontAdaptArgumentsSentinel)                \
-  /* Temporal #sec-temporal.timezone.from */                                   \
-  CPP(TemporalTimeZoneFrom, kDontAdaptArgumentsSentinel)                       \
-  /* Temporal #sec-get-temporal.timezone.prototype.id */                       \
-  CPP(TemporalTimeZonePrototypeId, JSParameterCount(0))                        \
-  /* Temporal #sec-temporal.timezone.prototype.getoffsetnanosecondsfor */      \
-  CPP(TemporalTimeZonePrototypeGetOffsetNanosecondsFor,                        \
-      kDontAdaptArgumentsSentinel)                                             \
-  /* Temporal #sec-temporal.timezone.prototype.getoffsetstringfor */           \
-  CPP(TemporalTimeZonePrototypeGetOffsetStringFor,                             \
-      kDontAdaptArgumentsSentinel)                                             \
-  /* Temporal #sec-temporal.timezone.prototype.getplaindatetimefor */          \
-  CPP(TemporalTimeZonePrototypeGetPlainDateTimeFor,                            \
-      kDontAdaptArgumentsSentinel)                                             \
-  /* Temporal #sec-temporal.timezone.prototype.getinstantfor */                \
-  CPP(TemporalTimeZonePrototypeGetInstantFor, kDontAdaptArgumentsSentinel)     \
-  /* Temporal #sec-temporal.timezone.prototype.getpossibleinstantsfor */       \
-  CPP(TemporalTimeZonePrototypeGetPossibleInstantsFor,                         \
-      kDontAdaptArgumentsSentinel)                                             \
-  /* Temporal #sec-temporal.timezone.prototype.getnexttransition */            \
-  CPP(TemporalTimeZonePrototypeGetNextTransition, kDontAdaptArgumentsSentinel) \
-  /* Temporal #sec-temporal.timezone.prototype.getprevioustransition */        \
-  CPP(TemporalTimeZonePrototypeGetPreviousTransition,                          \
-      kDontAdaptArgumentsSentinel)                                             \
-  /* Temporal #sec-temporal.timezone.prototype.tostring */                     \
-  CPP(TemporalTimeZonePrototypeToString, kDontAdaptArgumentsSentinel)          \
-  /* Temporal #sec-temporal.timezone.prototype.tojson */                       \
-  CPP(TemporalTimeZonePrototypeToJSON, kDontAdaptArgumentsSentinel)            \
-                                                                               \
-  /* Temporal.Calendar */                                                      \
-  /* Temporal #sec-temporal.calendar */                                        \
-  CPP(TemporalCalendarConstructor, kDontAdaptArgumentsSentinel)                \
-  /* Temporal #sec-temporal.calendar.from */                                   \
-  CPP(TemporalCalendarFrom, kDontAdaptArgumentsSentinel)                       \
-  /* Temporal #sec-get-temporal.calendar.prototype.id */                       \
-  CPP(TemporalCalendarPrototypeId, JSParameterCount(0))                        \
-  /* Temporal #sec-temporal.calendar.prototype.datefromfields */               \
-  CPP(TemporalCalendarPrototypeDateFromFields, kDontAdaptArgumentsSentinel)    \
-  /* Temporal #sec-temporal.calendar.prototype.yearmonthfromfields */          \
-  CPP(TemporalCalendarPrototypeYearMonthFromFields,                            \
-      kDontAdaptArgumentsSentinel)                                             \
-  /* Temporal #sec-temporal.calendar.prototype.monthdayfromfields */           \
-  CPP(TemporalCalendarPrototypeMonthDayFromFields,                             \
-      kDontAdaptArgumentsSentinel)                                             \
-  /* Temporal #sec-temporal.calendar.prototype.dateadd */                      \
-  CPP(TemporalCalendarPrototypeDateAdd, kDontAdaptArgumentsSentinel)           \
-  /* Temporal #sec-temporal.calendar.prototype.dateuntil */                    \
-  CPP(TemporalCalendarPrototypeDateUntil, kDontAdaptArgumentsSentinel)         \
-  /* Temporal #sec-temporal.calendar.prototype.year */                         \
-  CPP(TemporalCalendarPrototypeYear, kDontAdaptArgumentsSentinel)              \
-  /* Temporal #sec-temporal.calendar.prototype.month */                        \
-  CPP(TemporalCalendarPrototypeMonth, kDontAdaptArgumentsSentinel)             \
-  /* Temporal #sec-temporal.calendar.prototype.monthcode */                    \
-  CPP(TemporalCalendarPrototypeMonthCode, kDontAdaptArgumentsSentinel)         \
-  /* Temporal #sec-temporal.calendar.prototype.day */                          \
-  CPP(TemporalCalendarPrototypeDay, kDontAdaptArgumentsSentinel)               \
-  /* Temporal #sec-temporal.calendar.prototype.dayofweek */                    \
-  CPP(TemporalCalendarPrototypeDayOfWeek, kDontAdaptArgumentsSentinel)         \
-  /* Temporal #sec-temporal.calendar.prototype.dayofyear */                    \
-  CPP(TemporalCalendarPrototypeDayOfYear, kDontAdaptArgumentsSentinel)         \
-  /* Temporal #sec-temporal.calendar.prototype.weekofyear */                   \
-  CPP(TemporalCalendarPrototypeWeekOfYear, kDontAdaptArgumentsSentinel)        \
-  /* Temporal #sec-temporal.calendar.prototype.daysinweek */                   \
-  CPP(TemporalCalendarPrototypeDaysInWeek, kDontAdaptArgumentsSentinel)        \
-  /* Temporal #sec-temporal.calendar.prototype.daysinmonth */                  \
-  CPP(TemporalCalendarPrototypeDaysInMonth, kDontAdaptArgumentsSentinel)       \
-  /* Temporal #sec-temporal.calendar.prototype.daysinyear */                   \
-  CPP(TemporalCalendarPrototypeDaysInYear, kDontAdaptArgumentsSentinel)        \
-  /* Temporal #sec-temporal.calendar.prototype.monthsinyear */                 \
-  CPP(TemporalCalendarPrototypeMonthsInYear, kDontAdaptArgumentsSentinel)      \
-  /* Temporal #sec-temporal.calendar.prototype.inleapyear */                   \
-  CPP(TemporalCalendarPrototypeInLeapYear, kDontAdaptArgumentsSentinel)        \
-  /* Temporal #sec-temporal.calendar.prototype.fields */                       \
-  TFJ(TemporalCalendarPrototypeFields, kJSArgcReceiverSlots + 1, kReceiver,    \
-      kIterable)                                                               \
-  /* Temporal #sec-temporal.calendar.prototype.mergefields */                  \
-  CPP(TemporalCalendarPrototypeMergeFields, kDontAdaptArgumentsSentinel)       \
-  /* Temporal #sec-temporal.calendar.prototype.tostring */                     \
-  CPP(TemporalCalendarPrototypeToString, kDontAdaptArgumentsSentinel)          \
-  /* Temporal #sec-temporal.calendar.prototype.tojson */                       \
-  CPP(TemporalCalendarPrototypeToJSON, kDontAdaptArgumentsSentinel)            \
   /* Temporal #sec-date.prototype.totemporalinstant */                         \
   CPP(DatePrototypeToTemporalInstant, kDontAdaptArgumentsSentinel)             \
-                                                                               \
-  /* "Private" (created but not exposed) Bulitins needed by Temporal */        \
-  TFJ(StringFixedArrayFromIterable, kJSArgcReceiverSlots + 1, kReceiver,       \
-      kIterable)                                                               \
-  TFJ(TemporalInstantFixedArrayFromIterable, kJSArgcReceiverSlots + 1,         \
-      kReceiver, kIterable)
 
 #define BUILTIN_LIST_BASE(CPP, TSJ, TFJ, TSC, TFC, TFS, TFH, ASM) \
   BUILTIN_LIST_BASE_TIER0(CPP, TFJ, TFC, TFS, TFH, ASM)           \
@@ -2313,10 +2209,6 @@ namespace internal {
   IF_WASM(TFS, WasmStringToLowerCaseIntl, NeedsContext::kYes, kString)         \
                                                                                \
   /* Temporal */                                                               \
-  /* Temporal #sec-temporal.calendar.prototype.era */                          \
-  CPP(TemporalCalendarPrototypeEra, kDontAdaptArgumentsSentinel)               \
-  /* Temporal #sec-temporal.calendar.prototype.erayear */                      \
-  CPP(TemporalCalendarPrototypeEraYear, kDontAdaptArgumentsSentinel)           \
   /* Temporal #sec-get-temporal.plaindate.prototype.era */                     \
   CPP(TemporalPlainDatePrototypeEra, JSParameterCount(0))                      \
   /* Temporal #sec-get-temporal.plaindate.prototype.erayear */                 \

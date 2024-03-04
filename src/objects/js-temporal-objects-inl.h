@@ -81,7 +81,6 @@ TEMPORAL_TIME_INLINE_GETTER_SETTER(JSTemporalPlainTime, hour_minute_second,
                                    second_parts)
 TEMPORAL_DATE_INLINE_GETTER_SETTER(JSTemporalPlainYearMonth, year_month_day)
 
-TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalCalendar)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalDuration)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalInstant)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalPlainDate)
@@ -89,27 +88,26 @@ TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalPlainDateTime)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalPlainMonthDay)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalPlainTime)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalPlainYearMonth)
-TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalTimeZone)
 TQ_OBJECT_CONSTRUCTORS_IMPL(JSTemporalZonedDateTime)
 
-BIT_FIELD_ACCESSORS(JSTemporalCalendar, flags, calendar_index,
-                    JSTemporalCalendar::CalendarIndexBits)
-
-BOOL_ACCESSORS(JSTemporalTimeZone, flags, is_offset, IsOffsetBit::kShift)
+BOOL_ACCESSORS(JSTemporalZonedDateTime, time_zone_flags, time_zone_is_offset,
+               IsOffsetBit::kShift)
 
 // Special handling of sign
-TEMPORAL_INLINE_SIGNED_GETTER_SETTER(JSTemporalTimeZone, flags,
-                                     offset_milliseconds, -24 * 60 * 60 * 1000,
-                                     24 * 60 * 60 * 1000,
+TEMPORAL_INLINE_SIGNED_GETTER_SETTER(JSTemporalZonedDateTime, time_zone_flags,
+                                     time_zone_offset_milliseconds,
+                                     -24 * 60 * 60 * 1000, 24 * 60 * 60 * 1000,
                                      OffsetMillisecondsOrTimeZoneIndex)
 
-TEMPORAL_INLINE_SIGNED_GETTER_SETTER(JSTemporalTimeZone, details,
-                                     offset_sub_milliseconds, -1000000, 1000000,
+TEMPORAL_INLINE_SIGNED_GETTER_SETTER(JSTemporalZonedDateTime, time_zone_details,
+                                     time_zone_offset_sub_milliseconds,
+                                     -1'000'000, 1'000'000,
                                      OffsetSubMilliseconds)
 
-BIT_FIELD_ACCESSORS(JSTemporalTimeZone, flags,
-                    offset_milliseconds_or_time_zone_index,
-                    JSTemporalTimeZone::OffsetMillisecondsOrTimeZoneIndexBits)
+BIT_FIELD_ACCESSORS(
+    JSTemporalZonedDateTime, time_zone_flags,
+    time_zone_offset_milliseconds_or_time_zone_index,
+    JSTemporalZonedDateTime::OffsetMillisecondsOrTimeZoneIndexBits)
 
 }  // namespace internal
 }  // namespace v8

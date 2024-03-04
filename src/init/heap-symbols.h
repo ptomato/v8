@@ -600,6 +600,7 @@
   V(_, byte_offset_string, "byteOffset")                                      \
   V(_, CompileError_string, "CompileError")                                   \
   V(_, calendar_string, "calendar")                                           \
+  V(_, calendarId_string, "calendarId")                                       \
   V(_, callee_string, "callee")                                               \
   V(_, caller_string, "caller")                                               \
   V(_, cause_string, "cause")                                                 \
@@ -847,6 +848,7 @@
   V(_, throw_string, "throw")                                                 \
   V(_, timed_out_string, "timed-out")                                         \
   V(_, timeZone_string, "timeZone")                                           \
+  V(_, timeZoneId_string, "timeZoneId")                                       \
   V(_, toJSON_string, "toJSON")                                               \
   V(_, toString_string, "toString")                                           \
   V(_, true_string, "true")                                                   \

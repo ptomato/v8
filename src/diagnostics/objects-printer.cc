@@ -3250,16 +3250,6 @@ void JSTemporalPlainMonthDay::JSTemporalPlainMonthDayPrint(std::ostream& os) {
   JSObjectPrintBody(os, *this);
 }
 
-void JSTemporalTimeZone::JSTemporalTimeZonePrint(std::ostream& os) {
-  JSObjectPrintHeader(os, *this, "JSTemporalTimeZone");
-  JSObjectPrintBody(os, *this);
-}
-
-void JSTemporalCalendar::JSTemporalCalendarPrint(std::ostream& os) {
-  JSObjectPrintHeader(os, *this, "JSTemporalCalendar");
-  JSObjectPrintBody(os, *this);
-}
-
 void JSRawJson::JSRawJsonPrint(std::ostream& os) {
   JSObjectPrintHeader(os, *this, "JSRawJson");
   JSObjectPrintBody(os, *this);

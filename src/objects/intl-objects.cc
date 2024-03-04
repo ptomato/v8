@@ -2967,7 +2967,7 @@ bool Intl::IsValidTimeZoneName(const icu::TimeZone& tz) {
 
 // Function to support Temporal
 std::string Intl::TimeZoneIdFromIndex(int32_t index) {
-  if (index == JSTemporalTimeZone::kUTCTimeZoneIndex) {
+  if (index == TimeZoneDataRecord::kUTCTimeZoneIndex) {
     return "UTC";
   }
   std::unique_ptr<icu::StringEnumeration> enumeration(

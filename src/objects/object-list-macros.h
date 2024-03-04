@@ -191,7 +191,6 @@ namespace internal {
   V(JSSpecialObject)                            \
   V(JSStringIterator)                           \
   V(JSSynchronizationPrimitive)                 \
-  V(JSTemporalCalendar)                         \
   V(JSTemporalDuration)                         \
   V(JSTemporalInstant)                          \
   V(JSTemporalPlainDate)                        \
@@ -199,7 +198,6 @@ namespace internal {
   V(JSTemporalPlainDateTime)                    \
   V(JSTemporalPlainMonthDay)                    \
   V(JSTemporalPlainYearMonth)                   \
-  V(JSTemporalTimeZone)                         \
   V(JSTemporalZonedDateTime)                    \
   V(JSTypedArray)                               \
   V(JSValidIteratorWrapper)                     \

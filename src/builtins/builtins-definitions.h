@@ -1441,82 +1441,7 @@ namespace internal {
   /* Temporal #sec-temporal.instant.prototype.tozoneddatetimeiso */            \
   CPP(TemporalInstantPrototypeToZonedDateTimeISO)                              \
                                                                                \
-  /* Temporal.TimeZone */                                                      \
-  /* Temporal #sec-temporal.timezone */                                        \
-  CPP(TemporalTimeZoneConstructor)                                             \
-  /* Temporal #sec-temporal.timezone.from */                                   \
-  CPP(TemporalTimeZoneFrom)                                                    \
-  /* Temporal #sec-get-temporal.timezone.prototype.id */                       \
-  CPP(TemporalTimeZonePrototypeId)                                             \
-  /* Temporal #sec-temporal.timezone.prototype.getoffsetnanosecondsfor */      \
-  CPP(TemporalTimeZonePrototypeGetOffsetNanosecondsFor)                        \
-  /* Temporal #sec-temporal.timezone.prototype.getoffsetstringfor */           \
-  CPP(TemporalTimeZonePrototypeGetOffsetStringFor)                             \
-  /* Temporal #sec-temporal.timezone.prototype.getplaindatetimefor */          \
-  CPP(TemporalTimeZonePrototypeGetPlainDateTimeFor)                            \
-  /* Temporal #sec-temporal.timezone.prototype.getinstantfor */                \
-  CPP(TemporalTimeZonePrototypeGetInstantFor)                                  \
-  /* Temporal #sec-temporal.timezone.prototype.getpossibleinstantsfor */       \
-  CPP(TemporalTimeZonePrototypeGetPossibleInstantsFor)                         \
-  /* Temporal #sec-temporal.timezone.prototype.getnexttransition */            \
-  CPP(TemporalTimeZonePrototypeGetNextTransition)                              \
-  /* Temporal #sec-temporal.timezone.prototype.getprevioustransition */        \
-  CPP(TemporalTimeZonePrototypeGetPreviousTransition)                          \
-  /* Temporal #sec-temporal.timezone.prototype.tostring */                     \
-  CPP(TemporalTimeZonePrototypeToString)                                       \
-  /* Temporal #sec-temporal.timezone.prototype.tojson */                       \
-  CPP(TemporalTimeZonePrototypeToJSON)                                         \
-                                                                               \
-  /* Temporal.Calendar */                                                      \
-  /* Temporal #sec-temporal.calendar */                                        \
-  CPP(TemporalCalendarConstructor)                                             \
-  /* Temporal #sec-temporal.calendar.from */                                   \
-  CPP(TemporalCalendarFrom)                                                    \
-  /* Temporal #sec-get-temporal.calendar.prototype.id */                       \
-  CPP(TemporalCalendarPrototypeId)                                             \
-  /* Temporal #sec-temporal.calendar.prototype.datefromfields */               \
-  CPP(TemporalCalendarPrototypeDateFromFields)                                 \
-  /* Temporal #sec-temporal.calendar.prototype.dateadd */                      \
-  CPP(TemporalCalendarPrototypeDateAdd)                                        \
-  /* Temporal #sec-temporal.calendar.prototype.dateuntil */                    \
-  CPP(TemporalCalendarPrototypeDateUntil)                                      \
-  /* Temporal #sec-temporal.calendar.prototype.year */                         \
-  CPP(TemporalCalendarPrototypeYear)                                           \
-  /* Temporal #sec-temporal.calendar.prototype.month */                        \
-  CPP(TemporalCalendarPrototypeMonth)                                          \
-  /* Temporal #sec-temporal.calendar.prototype.monthcode */                    \
-  CPP(TemporalCalendarPrototypeMonthCode)                                      \
-  /* Temporal #sec-temporal.calendar.prototype.day */                          \
-  CPP(TemporalCalendarPrototypeDay)                                            \
-  /* Temporal #sec-temporal.calendar.prototype.dayofweek */                    \
-  CPP(TemporalCalendarPrototypeDayOfWeek)                                      \
-  /* Temporal #sec-temporal.calendar.prototype.dayofyear */                    \
-  CPP(TemporalCalendarPrototypeDayOfYear)                                      \
-  /* Temporal #sec-temporal.calendar.prototype.weekofyear */                   \
-  CPP(TemporalCalendarPrototypeWeekOfYear)                                     \
-  /* Temporal #sec-temporal.calendar.prototype.daysinweek */                   \
-  CPP(TemporalCalendarPrototypeDaysInWeek)                                     \
-  /* Temporal #sec-temporal.calendar.prototype.daysinmonth */                  \
-  CPP(TemporalCalendarPrototypeDaysInMonth)                                    \
-  /* Temporal #sec-temporal.calendar.prototype.daysinyear */                   \
-  CPP(TemporalCalendarPrototypeDaysInYear)                                     \
-  /* Temporal #sec-temporal.calendar.prototype.monthsinyear */                 \
-  CPP(TemporalCalendarPrototypeMonthsInYear)                                   \
-  /* Temporal #sec-temporal.calendar.prototype.inleapyear */                   \
-  CPP(TemporalCalendarPrototypeInLeapYear)                                     \
-  /* Temporal #sec-temporal.calendar.prototype.fields */                       \
-  CPP(TemporalCalendarPrototypeFields)                                         \
-  /* Temporal #sec-temporal.calendar.prototype.mergefields */                  \
-  CPP(TemporalCalendarPrototypeMergeFields)                                    \
-  /* Temporal #sec-temporal.calendar.prototype.tostring */                     \
-  CPP(TemporalCalendarPrototypeToString)                                       \
-  /* Temporal #sec-temporal.calendar.prototype.tojson */                       \
-  CPP(TemporalCalendarPrototypeToJSON)                                         \
-  /* Temporal #sec-date.prototype.totemporalinstant */                         \
-  CPP(DatePrototypeToTemporalInstant)                                          \
-                                                                               \
-  /* "Private" (created but not exposed) Bulitins needed by Temporal */        \
-  TFJ(StringFixedArrayFromIterable, kJSArgcReceiverSlots, kIterable)
+  CPP(DatePrototypeToTemporalInstant)
 
 #define BUILTIN_LIST_BASE(CPP, TFJ, TFC, TFS, TFH, ASM) \
   BUILTIN_LIST_BASE_TIER0(CPP, TFJ, TFC, TFS, TFH, ASM) \
@@ -1705,12 +1630,6 @@ namespace internal {
   /* ES #sec-string.prototype.touppercase */                           \
   CPP(StringPrototypeToUpperCaseIntl)                                  \
   TFS(StringToLowerCaseIntl, NeedsContext::kYes, kString)              \
-                                                                       \
-  /* Temporal */                                                       \
-  /* Temporal #sec-temporal.calendar.prototype.era */                  \
-  CPP(TemporalCalendarPrototypeEra)                                    \
-  /* Temporal #sec-temporal.calendar.prototype.erayear */              \
-  CPP(TemporalCalendarPrototypeEraYear)                                \
                                                                        \
   CPP(V8BreakIteratorConstructor)                                      \
   CPP(V8BreakIteratorInternalAdoptText)                                \

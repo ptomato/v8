@@ -2944,7 +2944,7 @@ bool Intl::IsValidTimeZoneName(const icu::TimeZone& tz) {
 
 // Function to support Temporal
 std::string Intl::TimeZoneIdFromIndex(int32_t index) {
-  if (index == JSTemporalTimeZone::kUTCTimeZoneIndex) {
+  if (index == TimeZoneDataRecord::kUTCTimeZoneIndex) {
     return "UTC";
   }
   std::unique_ptr<icu::StringEnumeration> enumeration(
@@ -3102,50 +3102,6 @@ Handle<BigInt> MillisecondToNanosecond(Isolate* isolate, int64_t ms) {
 }
 
 }  // namespace
-
-Handle<Object> Intl::GetTimeZoneOffsetTransitionNanoseconds(
-    Isolate* isolate, int32_t time_zone_index, Handle<BigInt> nanosecond_epoch,
-    Intl::Transition transition) {
-  std::unique_ptr<const icu::BasicTimeZone> basic_time_zone(
-      CreateBasicTimeZoneFromIndex(time_zone_index));
-
-  icu::TimeZoneTransition icu_transition;
-  UBool has_transition;
-  switch (transition) {
-    case Intl::Transition::kNext:
-      has_transition = basic_time_zone->getNextTransition(
-          ApproximateMillisecondEpoch(isolate, nanosecond_epoch), false,
-          icu_transition);
-      break;
-    case Intl::Transition::kPrevious:
-      has_transition = basic_time_zone->getPreviousTransition(
-          ApproximateMillisecondEpoch(isolate, nanosecond_epoch,
-                                      Direction::kFuture),
-          false, icu_transition);
-      break;
-  }
-
-  if (!has_transition) {
-    return isolate->factory()->null_value();
-  }
-  // #sec-temporal-getianatimezonenexttransition and
-  // #sec-temporal-getianatimezoneprevioustransition states:
-  // "The operation returns null if no such transition exists for which t ≤
-  // ℤ(nsMaxInstant)." and "The operation returns null if no such transition
-  // exists for which t ≥ ℤ(nsMinInstant)."
-  //
-  // nsMinInstant = -nsMaxInstant = -8.64 × 10^21 => msMinInstant = -8.64 x
-  // 10^15
-  constexpr int64_t kMsMinInstant = -8.64e15;
-  // nsMaxInstant = 10^8 × nsPerDay = 8.64 × 10^21 => msMaxInstant = 8.64 x
-  // 10^15
-  constexpr int64_t kMsMaxInstant = 8.64e15;
-  int64_t time_ms = static_cast<int64_t>(icu_transition.getTime());
-  if (time_ms < kMsMinInstant || time_ms > kMsMaxInstant) {
-    return isolate->factory()->null_value();
-  }
-  return MillisecondToNanosecond(isolate, time_ms);
-}
 
 std::vector<Handle<BigInt>> Intl::GetTimeZonePossibleOffsetNanoseconds(
     Isolate* isolate, int32_t time_zone_index,

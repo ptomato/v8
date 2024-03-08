@@ -2535,8 +2535,6 @@ int JSObject::GetHeaderSize(InstanceType type,
       return JSAtomicsMutex::kHeaderSize;
     case JS_ATOMICS_CONDITION_TYPE:
       return JSAtomicsCondition::kHeaderSize;
-    case JS_TEMPORAL_CALENDAR_TYPE:
-      return JSTemporalCalendar::kHeaderSize;
     case JS_TEMPORAL_DURATION_TYPE:
       return JSTemporalDuration::kHeaderSize;
     case JS_TEMPORAL_INSTANT_TYPE:
@@ -2547,8 +2545,6 @@ int JSObject::GetHeaderSize(InstanceType type,
       return JSTemporalPlainDateTime::kHeaderSize;
     case JS_TEMPORAL_PLAIN_TIME_TYPE:
       return JSTemporalPlainTime::kHeaderSize;
-    case JS_TEMPORAL_TIME_ZONE_TYPE:
-      return JSTemporalTimeZone::kHeaderSize;
     case JS_TEMPORAL_ZONED_DATE_TIME_TYPE:
       return JSTemporalZonedDateTime::kHeaderSize;
     case JS_VALID_ITERATOR_WRAPPER_TYPE:

@@ -880,17 +880,14 @@ Maybe<DateTimeValueRecord> TemporalPlainDateTimeToRecord(
   // TODO(ftang): we should change the return type of GetTimeZone() to
   // Handle<String> by ensure it will not return undefined.
   CHECK(IsString(*time_zone_obj));
-  Handle<JSTemporalTimeZone> time_zone =
-      temporal::CreateTemporalTimeZone(isolate,
-                                       Handle<String>::cast(time_zone_obj))
-          .ToHandleChecked();
+  TimeZoneDataRecord time_zone_rec{isolate, Handle<String>::cast(time_zone_obj)};
   // 9. Let instant be ? BuiltinTimeZoneGetInstantFor(timeZone, plainDateTime,
   // "compatible").
   Handle<JSTemporalInstant> instant;
   ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, instant,
-      temporal::BuiltinTimeZoneGetInstantForCompatible(
-          isolate, TimeZoneDataRecord{time_zone}, plain_date_time, method_name),
+      temporal::GetInstantForCompatible(
+          isolate, time_zone_rec, plain_date_time, method_name),
       Nothing<DateTimeValueRecord>());
   // 10. If pattern is null, throw a TypeError exception.
 

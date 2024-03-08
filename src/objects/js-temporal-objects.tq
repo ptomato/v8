@@ -34,10 +34,6 @@ bitfield struct JSTemporalTimeZoneSubMilliseconds extends uint31 {
   offset_sub_milliseconds: int32: 21 bit;
 }
 
-extern class JSTemporalCalendar extends JSObject {
-  flags: SmiTagged<JSTemporalCalendarFlags>;
-}
-
 extern class JSTemporalDuration extends JSObject {
   years: Number;
   months: Number;
@@ -70,11 +66,6 @@ extern class JSTemporalPlainDate extends JSObject {
 extern class JSTemporalPlainTime extends JSObject {
   hour_minute_second: SmiTagged<JSTemporalHourMinuteSecond>;
   second_parts: SmiTagged<JSTemporalSecondParts>;
-}
-
-extern class JSTemporalTimeZone extends JSObject {
-  flags: SmiTagged<JSTemporalTimeZoneFlags>;
-  details: SmiTagged<JSTemporalTimeZoneSubMilliseconds>;
 }
 
 extern class JSTemporalZonedDateTime extends JSObject {

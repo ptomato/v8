@@ -266,53 +266,53 @@ V8_WARN_UNUSED_RESULT MaybeHandle<BigInt> AddInstant(
     Isolate* isolate, Handle<BigInt> epoch_nanoseconds,
     const TimeDurationRecord& addend);
 
-// #sec-temporal-balanceduration
-V8_WARN_UNUSED_RESULT Maybe<TimeDurationRecord> BalanceDuration(
-    Isolate* isolate, Unit largest_unit, Handle<Object> relative_to,
-    const TimeDurationRecord& duration, const char* method_name);
-// The special case of BalanceDuration while the nanosecond is a large value
+// #sec-temporal-balancetimeduration
+V8_WARN_UNUSED_RESULT Maybe<TimeDurationRecord> BalanceTimeDuration(
+    Isolate* isolate, Unit largest_unit, const TimeDurationRecord& duration,
+    const char* method_name);
+// The special case of BalanceTimeDuration while the nanosecond is a large value
 // and the rest are 0.
-V8_WARN_UNUSED_RESULT Maybe<TimeDurationRecord> BalanceDuration(
+V8_WARN_UNUSED_RESULT Maybe<TimeDurationRecord> BalanceTimeDuration(
     Isolate* isolate, Unit largest_unit, Handle<BigInt> nanoseconds,
     const char* method_name);
-// A special version of BalanceDuration which add two TimeDurationRecord
+// A special version of BalanceTimeDuration which add two TimeDurationRecord
 // internally as BigInt to avoid overflow double.
-V8_WARN_UNUSED_RESULT Maybe<TimeDurationRecord> BalanceDuration(
+V8_WARN_UNUSED_RESULT Maybe<TimeDurationRecord> BalanceTimeDuration(
     Isolate* isolate, Unit largest_unit, const TimeDurationRecord& dur1,
     const TimeDurationRecord& dur2, const char* method_name);
+// #sec-temporal-balancetimedurationrelative
+V8_WARN_UNUSED_RESULT Maybe<TimeDurationRecord> BalanceTimeDurationRelative(
+    Isolate* isolate, Unit largest_unit,
+    Handle<JSTemporalZonedDateTime> relative_to,
+    const TimeDurationRecord& duration, const char* method_name);
 
-// sec-temporal-balancepossiblyinfiniteduration
+// sec-temporal-balancepossiblyinfinitetimeduration
 enum BalanceOverflow {
   kNone,
   kPositive,
   kNegative,
 };
-struct BalancePossiblyInfiniteDurationResult {
+struct BalancePossiblyInfiniteTimeDurationResult {
   TimeDurationRecord value;
   BalanceOverflow overflow;
 };
-V8_WARN_UNUSED_RESULT Maybe<BalancePossiblyInfiniteDurationResult>
-BalancePossiblyInfiniteDuration(Isolate* isolate, Unit largest_unit,
-                                Handle<Object> relative_to,
-                                const TimeDurationRecord& duration,
-                                const char* method_name);
+V8_WARN_UNUSED_RESULT Maybe<BalancePossiblyInfiniteTimeDurationResult>
+BalancePossiblyInfiniteTimeDuration(Isolate* isolate, Unit largest_unit,
+                                    const TimeDurationRecord& duration,
+                                    const char* method_name);
 
-// The special case of BalancePossiblyInfiniteDuration while the nanosecond is a
-// large value and days contains non-zero values but the rest are 0.
-// This version has no relative_to.
-V8_WARN_UNUSED_RESULT Maybe<BalancePossiblyInfiniteDurationResult>
-BalancePossiblyInfiniteDuration(Isolate* isolate, Unit largest_unit,
-                                Handle<Object> relative_to, double days,
-                                Handle<BigInt> nanoseconds,
-                                const char* method_name);
-V8_WARN_UNUSED_RESULT Maybe<BalancePossiblyInfiniteDurationResult>
-BalancePossiblyInfiniteDuration(Isolate* isolate, Unit largest_unit,
-                                double days, Handle<BigInt> nanoseconds,
-                                const char* method_name) {
-  return BalancePossiblyInfiniteDuration(isolate, largest_unit,
-                                         isolate->factory()->undefined_value(),
-                                         days, nanoseconds, method_name);
-}
+// The special case of BalancePossiblyInfiniteTimeDuration while the nanosecond
+// is a large value but the rest are 0.
+V8_WARN_UNUSED_RESULT Maybe<BalancePossiblyInfiniteTimeDurationResult>
+BalancePossiblyInfiniteTimeDuration(Isolate* isolate, Unit largest_unit,
+                                    Handle<BigInt> nanoseconds,
+                                    const char* method_name);
+
+V8_WARN_UNUSED_RESULT Maybe<BalancePossiblyInfiniteTimeDurationResult>
+BalancePossiblyInfiniteTimeDurationRelative(
+    Isolate* isolate, Unit largest_unit,
+    Handle<JSTemporalZonedDateTime> relative_to,
+    const TimeDurationRecord& duration, const char* method_name);
 
 V8_WARN_UNUSED_RESULT Maybe<DurationRecord> DifferenceISODateTime(
     Isolate* isolate, const DateTimeRecord& date_time1,
@@ -5094,29 +5094,18 @@ Maybe<DateTimeRecord> AddDateTime(Isolate* isolate,
   return Just(time_result);
 }
 
-// #sec-temporal-balanceduration
-Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
-                                          const TimeDurationRecord& duration,
-                                          const char* method_name) {
-  TEMPORAL_ENTER_FUNC();
-
-  // 1. If relativeTo is not present, set relativeTo to undefined.
-  return BalanceDuration(isolate, largest_unit,
-                         isolate->factory()->undefined_value(), duration,
-                         method_name);
-}
-
-Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
-                                          Handle<BigInt> nanoseconds,
-                                          const char* method_name) {
-  // 1. Let balanceResult be ? BalancePossiblyInfiniteDuration(days, hours,
+Maybe<TimeDurationRecord> BalanceTimeDuration(Isolate* isolate,
+                                              Unit largest_unit,
+                                              Handle<BigInt> nanoseconds,
+                                              const char* method_name) {
+  // 1. Let balanceResult be ? BalancePossiblyInfiniteTimeDuration(days, hours,
   // minutes, seconds, milliseconds, microseconds, nanoseconds, largestUnit,
   // relativeTo).
-  BalancePossiblyInfiniteDurationResult balance_result;
+  BalancePossiblyInfiniteTimeDurationResult balance_result;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, balance_result,
-      BalancePossiblyInfiniteDuration(isolate, largest_unit, 0, nanoseconds,
-                                      method_name),
+      BalancePossiblyInfiniteTimeDuration(isolate, largest_unit, nanoseconds,
+                                          method_name),
       Nothing<TimeDurationRecord>());
 
   // 2. If balanceResult is positive overflow or negative overflow, then
@@ -5132,31 +5121,32 @@ Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
   }
 }
 
-Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
-                                          const TimeDurationRecord& dur1,
-                                          const TimeDurationRecord& dur2,
-                                          const char* method_name) {
+Maybe<TimeDurationRecord> BalanceTimeDuration(Isolate* isolate,
+                                              Unit largest_unit,
+                                              const TimeDurationRecord& dur1,
+                                              const TimeDurationRecord& dur2,
+                                              const char* method_name) {
   // Add the two TimeDurationRecord as BigInt in nanoseconds.
   Handle<BigInt> nanoseconds =
       BigInt::Add(isolate, TotalDurationNanoseconds(isolate, dur1, 0),
                   TotalDurationNanoseconds(isolate, dur2, 0))
           .ToHandleChecked();
-  return BalanceDuration(isolate, largest_unit, nanoseconds, method_name);
+  return BalanceTimeDuration(isolate, largest_unit, nanoseconds, method_name);
 }
 
-// #sec-temporal-balanceduration
-Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
-                                          Handle<Object> relative_to_obj,
-                                          const TimeDurationRecord& value,
-                                          const char* method_name) {
+// #sec-temporal-balancetimeduration
+Maybe<TimeDurationRecord> BalanceTimeDuration(Isolate* isolate,
+                                              Unit largest_unit,
+                                              const TimeDurationRecord& value,
+                                              const char* method_name) {
   // 1. Let balanceResult be ? BalancePossiblyInfiniteDuration(days, hours,
   // minutes, seconds, milliseconds, microseconds, nanoseconds, largestUnit,
   // relativeTo).
-  BalancePossiblyInfiniteDurationResult balance_result;
+  BalancePossiblyInfiniteTimeDurationResult balance_result;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, balance_result,
-      BalancePossiblyInfiniteDuration(isolate, largest_unit, relative_to_obj,
-                                      value, method_name),
+      BalancePossiblyInfiniteTimeDuration(isolate, largest_unit, value,
+                                          method_name),
       Nothing<TimeDurationRecord>());
 
   // 2. If balanceResult is positive overflow or negative overflow, then
@@ -5172,83 +5162,40 @@ Maybe<TimeDurationRecord> BalanceDuration(Isolate* isolate, Unit largest_unit,
   }
 }
 
-// sec-temporal-balancepossiblyinfiniteduration
-Maybe<BalancePossiblyInfiniteDurationResult> BalancePossiblyInfiniteDuration(
-    Isolate* isolate, Unit largest_unit, Handle<Object> relative_to_obj,
-    const TimeDurationRecord& value, const char* method_name) {
+// sec-temporal-balancepossiblyinfinitetimeduration
+Maybe<BalancePossiblyInfiniteTimeDurationResult>
+BalancePossiblyInfiniteTimeDuration(Isolate* isolate, Unit largest_unit,
+                                    const TimeDurationRecord& duration,
+                                    const char* method_name) {
   TEMPORAL_ENTER_FUNC();
-  TimeDurationRecord duration = value;
-  Handle<BigInt> nanoseconds;
 
-  // 2. If Type(relativeTo) is Object and relativeTo has an
-  // [[InitializedTemporalZonedDateTime]] internal slot, then
-  if (IsJSTemporalZonedDateTime(*relative_to_obj)) {
-    Handle<JSTemporalZonedDateTime> relative_to =
-        Handle<JSTemporalZonedDateTime>::cast(relative_to_obj);
-    // a. Let endNs be ? AddZonedDateTime(relativeTo.[[Nanoseconds]],
-    // relativeTo.[[TimeZone]], relativeTo.[[Calendar]], 0, 0, 0, days, hours,
-    // minutes, seconds, milliseconds, microseconds, nanoseconds).
-    Handle<BigInt> end_ns;
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, end_ns,
-        AddZonedDateTime(isolate, handle(relative_to->nanoseconds(), isolate),
-                         handle(relative_to->time_zone(), isolate),
-                         handle(relative_to->calendar(), isolate),
-                         {0, 0, 0, duration}, method_name),
-        Nothing<BalancePossiblyInfiniteDurationResult>());
-    // b. Set nanoseconds to endNs − relativeTo.[[Nanoseconds]].
-    ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, nanoseconds,
-        BigInt::Subtract(isolate, end_ns,
-                         handle(relative_to->nanoseconds(), isolate)),
-        Nothing<BalancePossiblyInfiniteDurationResult>());
-    // 3. Else,
-  } else {
-    // a. Set nanoseconds to ℤ(! TotalDurationNanoseconds(days, hours, minutes,
-    // seconds, milliseconds, microseconds, nanoseconds, 0)).
-    nanoseconds = TotalDurationNanoseconds(isolate, duration, 0);
-  }
+  // a. Set nanoseconds to ℤ(! TotalDurationNanoseconds(days, hours, minutes,
+  // seconds, milliseconds, microseconds, nanoseconds, 0)).
+  Handle<BigInt> nanoseconds = TotalDurationNanoseconds(isolate, duration, 0);
 
   // Call the BigInt version for the same process after step 4
   // The only value need to pass in is nanoseconds and days because
   // 1) step 4 and 5 use nanoseconds and days only, and
   // 2) step 6 is "Set hours, minutes, seconds, milliseconds, and microseconds
   // to 0."
-  return BalancePossiblyInfiniteDuration(isolate, largest_unit, relative_to_obj,
-                                         duration.days, nanoseconds,
-                                         method_name);
+  return BalancePossiblyInfiniteTimeDuration(isolate, largest_unit, nanoseconds,
+                                             method_name);
 }
 
-// The special case of BalancePossiblyInfiniteDuration while the nanosecond is a
-// large value and days contains non-zero values but the rest are 0.
-// This version has no relative_to.
-Maybe<BalancePossiblyInfiniteDurationResult> BalancePossiblyInfiniteDuration(
-    Isolate* isolate, Unit largest_unit, Handle<Object> relative_to_obj,
-    double days, Handle<BigInt> nanoseconds, const char* method_name) {
+// The special case of BalancePossiblyInfiniteTimeDuration while the nanosecond
+// is a large value and days contains non-zero values but the rest are 0.
+Maybe<BalancePossiblyInfiniteTimeDurationResult>
+BalancePossiblyInfiniteTimeDuration(Isolate* isolate, Unit largest_unit,
+                                    Handle<BigInt> nanoseconds,
+                                    const char* method_name) {
   TEMPORAL_ENTER_FUNC();
 
-  // 4. If largestUnit is one of "year", "month", "week", or "day", then
-  if (largest_unit == Unit::kYear || largest_unit == Unit::kMonth ||
-      largest_unit == Unit::kWeek || largest_unit == Unit::kDay) {
-    // a. Let result be ? NanosecondsToDays(nanoseconds, relativeTo).
-    NanosecondsToDaysResult result;
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, result,
-        NanosecondsToDays(isolate, nanoseconds, relative_to_obj, method_name),
-        Nothing<BalancePossiblyInfiniteDurationResult>());
-    // b. Set days to result.[[Days]].
-    days = result.days;
-    // c. Set nanoseconds to result.[[Nanoseconds]].
-    nanoseconds = BigInt::FromInt64(isolate, result.nanoseconds);
-    // 5. Else,
-  } else {
-    // a. Set days to 0.
-    days = 0;
-  }
   // 6. Set hours, minutes, seconds, milliseconds, and microseconds to 0.
   Handle<BigInt> thousand = BigInt::FromInt64(isolate, 1000);
   Handle<BigInt> sixty = BigInt::FromInt64(isolate, 60);
+  Handle<BigInt> twenty_four = BigInt::FromInt64(isolate, 24);
   Handle<BigInt> zero = BigInt::FromInt64(isolate, 0);
+  Handle<BigInt> days = zero;
   Handle<BigInt> hours = zero;
   Handle<BigInt> minutes = zero;
   Handle<BigInt> seconds = zero;
@@ -5263,12 +5210,43 @@ Maybe<BalancePossiblyInfiniteDurationResult> BalancePossiblyInfiniteDuration(
     nanoseconds = BigInt::UnaryMinus(isolate, nanoseconds);
   }
 
-  // 9 If largestUnit is "year", "month", "week", "day", or "hour", then
+  // 9 If largestUnit is "year", "month", "week", "day", then
   switch (largest_unit) {
     case Unit::kYear:
     case Unit::kMonth:
     case Unit::kWeek:
     case Unit::kDay:
+      // a. Set microseconds to floor(nanoseconds / 1000).
+      microseconds =
+          BigInt::Divide(isolate, nanoseconds, thousand).ToHandleChecked();
+      // b. Set nanoseconds to nanoseconds modulo 1000.
+      nanoseconds =
+          BigInt::Remainder(isolate, nanoseconds, thousand).ToHandleChecked();
+      // c. Set milliseconds to floor(microseconds / 1000).
+      milliseconds =
+          BigInt::Divide(isolate, microseconds, thousand).ToHandleChecked();
+      // d. Set microseconds to microseconds modulo 1000.
+      microseconds =
+          BigInt::Remainder(isolate, microseconds, thousand).ToHandleChecked();
+      // e. Set seconds to floor(milliseconds / 1000).
+      seconds =
+          BigInt::Divide(isolate, milliseconds, thousand).ToHandleChecked();
+      // f. Set milliseconds to milliseconds modulo 1000.
+      milliseconds =
+          BigInt::Remainder(isolate, milliseconds, thousand).ToHandleChecked();
+      // g. Set minutes to floor(seconds, 60).
+      minutes = BigInt::Divide(isolate, seconds, sixty).ToHandleChecked();
+      // h. Set seconds to seconds modulo 60.
+      seconds = BigInt::Remainder(isolate, seconds, sixty).ToHandleChecked();
+      // i. Set hours to floor(minutes / 60).
+      hours = BigInt::Divide(isolate, minutes, sixty).ToHandleChecked();
+      // j. Set minutes to minutes modulo 60.
+      minutes = BigInt::Remainder(isolate, minutes, sixty).ToHandleChecked();
+      // k. Set _days_ to floor(_hours_ / 24).
+      days = BigInt::Divide(isolate, hours, twenty_four).ToHandleChecked();
+      // l. Set _hours_ to _hours_ modulo 24.
+      hours = BigInt::Remainder(isolate, hours, twenty_four).ToHandleChecked();
+      break;
     case Unit::kHour:
       // a. Set microseconds to floor(nanoseconds / 1000).
       microseconds =
@@ -5381,6 +5359,7 @@ Maybe<BalancePossiblyInfiniteDurationResult> BalancePossiblyInfiniteDuration(
   // 1. Return positive overflow.
   // ii. Else if sign = -1, then
   // 1. Return negative overflow.
+  double days_value = Object::Number(*BigInt::ToNumber(isolate, days));
   double hours_value = Object::Number(*BigInt::ToNumber(isolate, hours));
   double minutes_value = Object::Number(*BigInt::ToNumber(isolate, minutes));
   double seconds_value = Object::Number(*BigInt::ToNumber(isolate, seconds));
@@ -5390,11 +5369,11 @@ Maybe<BalancePossiblyInfiniteDurationResult> BalancePossiblyInfiniteDuration(
       Object::Number(*BigInt::ToNumber(isolate, microseconds));
   double nanoseconds_value =
       Object::Number(*BigInt::ToNumber(isolate, nanoseconds));
-  if (std::isinf(days) || std::isinf(hours_value) ||
+  if (std::isinf(days_value) || std::isinf(hours_value) ||
       std::isinf(minutes_value) || std::isinf(seconds_value) ||
       std::isinf(milliseconds_value) || std::isinf(microseconds_value) ||
       std::isinf(nanoseconds_value)) {
-    return Just(BalancePossiblyInfiniteDurationResult(
+    return Just(BalancePossiblyInfiniteTimeDurationResult(
         {{0, 0, 0, 0, 0, 0, 0},
          sign == 1 ? BalanceOverflow::kPositive : BalanceOverflow::kNegative}));
   }
@@ -5406,12 +5385,109 @@ Maybe<BalancePossiblyInfiniteDurationResult> BalancePossiblyInfiniteDuration(
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, result,
       TimeDurationRecord::Create(
-          isolate, days, hours_value * sign, minutes_value * sign,
+          isolate, days_value * sign, hours_value * sign, minutes_value * sign,
           seconds_value * sign, milliseconds_value * sign,
           microseconds_value * sign, nanoseconds_value * sign),
-      Nothing<BalancePossiblyInfiniteDurationResult>());
-  return Just(
-      BalancePossiblyInfiniteDurationResult({result, BalanceOverflow::kNone}));
+      Nothing<BalancePossiblyInfiniteTimeDurationResult>());
+  return Just(BalancePossiblyInfiniteTimeDurationResult(
+      {result, BalanceOverflow::kNone}));
+}
+
+// #sec-temporal-balancepossiblyinfinitetimedurationrelative
+Maybe<BalancePossiblyInfiniteTimeDurationResult>
+BalancePossiblyInfiniteTimeDurationRelative(
+    Isolate* isolate, Unit largest_unit,
+    Handle<JSTemporalZonedDateTime> zoned_relative_to,
+    const TimeDurationRecord& duration, const char* method_name) {
+  // 1. Let endNs be ? AddZonedDateTime(zonedRelativeTo.[[Nanoseconds]],
+  // zonedRelativeTo.[[TimeZone]], zonedRelativeTo.[[Calendar]], 0, 0, 0, days,
+  // hours, minutes, seconds, milliseconds, microseconds, nanoseconds).
+  Handle<BigInt> end_ns;
+  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, end_ns,
+      AddZonedDateTime(isolate,
+                       handle(zoned_relative_to->nanoseconds(), isolate),
+                       handle(zoned_relative_to->time_zone(), isolate),
+                       handle(zoned_relative_to->calendar(), isolate),
+                       {0, 0, 0, duration}, method_name),
+      Nothing<BalancePossiblyInfiniteTimeDurationResult>());
+  // 2. Set nanoseconds to endNs − relativeTo.[[Nanoseconds]].
+  Handle<BigInt> nanoseconds;
+  ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, nanoseconds,
+      BigInt::Subtract(isolate, end_ns,
+                       handle(zoned_relative_to->nanoseconds(), isolate)),
+      Nothing<BalancePossiblyInfiniteTimeDurationResult>());
+  // 3. If largestUnit is one of *"year"*, *"month"*, *"week"*, or *"day"*, then
+  double days = 0;
+  if (largest_unit == Unit::kYear || largest_unit == Unit::kMonth ||
+      largest_unit == Unit::kWeek || largest_unit == Unit::kDay) {
+    // a. Let _result_ be ? NanosecondsToDays(_nanoseconds_, _zonedRelativeTo_).
+    NanosecondsToDaysResult result;
+    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+        isolate, result,
+        NanosecondsToDays(isolate, nanoseconds,
+                          Handle<Object>::cast(zoned_relative_to), method_name),
+        Nothing<BalancePossiblyInfiniteTimeDurationResult>());
+    // b. Set days to result.[[Days]].
+    days = result.days;
+    // c. Set nanoseconds to result.[[Nanoseconds]].
+    nanoseconds = BigInt::FromInt64(isolate, result.nanoseconds);
+    // d. Set _largestUnit_ to *"hour"*.
+    largest_unit = Unit::kHour;
+  }
+  // 4. Else,
+  //   a. Set _days_ to 0.
+  // 5. Let balanceResult be ? BalancePossiblyInfiniteTimeDuration(0, 0, 0, 0,
+  // 0, 0, _result_.[[Nanoseconds]], _largestUnit_).
+  BalancePossiblyInfiniteTimeDurationResult balance_result;
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, balance_result,
+      BalancePossiblyInfiniteTimeDuration(isolate, largest_unit, nanoseconds,
+                                          method_name),
+      Nothing<BalancePossiblyInfiniteTimeDurationResult>());
+  // 6. If _balanceResult_ is ~positive overflow~ or ~negative overflow~, return
+  // _balanceResult_.
+  if (balance_result.overflow != kNone) {
+    return Just(balance_result);
+  }
+  // 7. Return ? CreateTimeDurationRecord(_days_, _balanceResult_.[[Hours]],
+  // _balanceResult_.[[Minutes]], _balanceResult_.[[Seconds]],
+  // _balanceResult_.[[Milliseconds]], _balanceResult_.[[Microseconds]],
+  // _balanceResult_.[[Nanoseconds]]).
+  return Just(BalancePossiblyInfiniteTimeDurationResult{
+      {days, balance_result.value.hours, balance_result.value.minutes,
+       balance_result.value.seconds, balance_result.value.milliseconds,
+       balance_result.value.microseconds, balance_result.value.nanoseconds},
+      kNone});
+}
+
+// #sec-temporal-balancetimedurationrelative
+Maybe<TimeDurationRecord> BalanceTimeDurationRelative(
+    Isolate* isolate, Unit largest_unit,
+    Handle<JSTemporalZonedDateTime> zoned_relative_to,
+    const TimeDurationRecord& duration, const char* method_name) {
+  // 1. Let balanceResult be ? BalancePossiblyInfiniteTimeDurationRelative(days,
+  // hours, minutes, seconds, milliseconds, microseconds, nanoseconds,
+  // largestUnit, zonedRelativeTo).
+  BalancePossiblyInfiniteTimeDurationResult balance_result;
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, balance_result,
+      BalancePossiblyInfiniteTimeDurationRelative(
+          isolate, largest_unit, zoned_relative_to, duration, method_name),
+      Nothing<TimeDurationRecord>());
+
+  // 2. If balanceResult is positive overflow or negative overflow, then
+  if (balance_result.overflow != BalanceOverflow::kNone) {
+    // a. Throw a RangeError exception.
+    THROW_NEW_ERROR_RETURN_VALUE(isolate,
+                                 NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(),
+                                 Nothing<TimeDurationRecord>());
+    // 3. Else,
+  } else {
+    // a. Return balanceResult.
+    return Just(balance_result.value);
+  }
 }
 
 // #sec-temporal-addzoneddatetime
@@ -5790,7 +5866,7 @@ Maybe<DurationRecord> DifferenceISODateTime(
     // largestUnit).
     time_difference.days = -time_sign;
     time_difference =
-        BalanceDuration(isolate, largest_unit, time_difference, method_name)
+        BalanceTimeDuration(isolate, largest_unit, time_difference, method_name)
             .ToChecked();
   }
 
@@ -5827,7 +5903,7 @@ Maybe<DurationRecord> DifferenceISODateTime(
   time_difference.days = Object::Number(date_difference->days());
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, time_difference,
-      BalanceDuration(isolate, largest_unit, time_difference, method_name),
+      BalanceTimeDuration(isolate, largest_unit, time_difference, method_name),
       Nothing<DurationRecord>());
 
   // 14. Return ! CreateDurationRecord(dateDifference.[[Years]],
@@ -6684,7 +6760,7 @@ Maybe<DurationRecord> AdjustRoundedDurationDays(Isolate* isolate,
   TimeDurationRecord adjusted_time_duration;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, adjusted_time_duration,
-      BalanceDuration(isolate, Unit::kHour, time_remainder_ns, method_name),
+      BalanceTimeDuration(isolate, Unit::kHour, time_remainder_ns, method_name),
       Nothing<DurationRecord>());
   // 13. Return ! CreateDurationRecord(adjustedDateDuration.[[Years]],
   // adjustedDateDuration.[[Months]], adjustedDateDuration.[[Weeks]],
@@ -6990,7 +7066,7 @@ Maybe<DateDurationRecord> UnbalanceDurationRelative(
 }
 
 // #sec-temporal-balancedurationrelative
-Maybe<DateDurationRecord> BalanceDurationRelative(
+Maybe<DateDurationRecord> BalanceDateDurationRelative(
     Isolate* isolate, const DateDurationRecord& dur, Unit largest_unit,
     Handle<Object> relative_to_obj, const char* method_name) {
   TEMPORAL_ENTER_FUNC();
@@ -7595,40 +7671,56 @@ MaybeHandle<JSTemporalDuration> JSTemporalDuration::Round(
                     relative_to, method_name),
       Handle<JSTemporalDuration>());
 
-  // 23. Let adjustResult be ? AdjustRoundedDurationDays(roundResult.[[Years]],
-  // roundResult.[[Months]], roundResult.[[Weeks]], roundResult.[[Days]],
-  // roundResult.[[Hours]], roundResult.[[Minutes]], roundResult.[[Seconds]],
-  // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
-  // roundResult.[[Nanoseconds]], roundingIncrement, smallestUnit, roundingMode,
-  // relativeTo).
-  DurationRecord adjust_result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, adjust_result,
-      AdjustRoundedDurationDays(isolate, round_result.record,
-                                rounding_increment, smallest_unit,
-                                rounding_mode, relative_to, method_name),
-      Handle<JSTemporalDuration>());
-  // 24. Let balanceResult be ? BalanceDuration(adjustResult.[[Days]],
-  // adjustResult.[[Hours]], adjustResult.[[Minutes]], adjustResult.[[Seconds]],
-  // adjustResult.[[Milliseconds]], adjustResult.[[Microseconds]],
-  // adjustResult.[[Nanoseconds]], largestUnit, relativeTo).
+  // 23. If relativeTo has an [[InitializedTemporalZonedDateTime]] internal
+  // slot, then
   TimeDurationRecord balance_result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, balance_result,
-      BalanceDuration(isolate, largest_unit, relative_to,
-                      adjust_result.time_duration, method_name),
-      Handle<JSTemporalDuration>{});
-  // 25. Let result be ? BalanceDurationRelative(adjustResult.[[Years]],
-  // adjustResult.[[Months]], adjustResult.[[Weeks]], balanceResult.[[Days]],
+  if (IsJSTemporalZonedDateTime(*relative_to)) {
+    // a. Set roundResult to ? AdjustRoundedDurationDays(roundResult.[[Years]],
+    // roundResult.[[Months]], roundResult.[[Weeks]], roundResult.[[Days]],
+    // roundResult.[[Hours]], roundResult.[[Minutes]], roundResult.[[Seconds]],
+    // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
+    // roundResult.[[Nanoseconds]], roundingIncrement, smallestUnit,
+    // roundingMode, relativeTo).
+    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+        isolate, round_result.record,
+        AdjustRoundedDurationDays(isolate, round_result.record,
+                                  rounding_increment, smallest_unit,
+                                  rounding_mode, relative_to, method_name),
+        {});
+    // b. Let balanceResult be ? BalanceDuration(roundResult.[[Days]],
+    // roundResult.[[Hours]], roundResult.[[Minutes]], roundResult.[[Seconds]],
+    // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
+    // roundResult.[[Nanoseconds]], largestUnit, relativeTo).
+    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+        isolate, balance_result,
+        BalanceTimeDurationRelative(
+            isolate, largest_unit,
+            Handle<JSTemporalZonedDateTime>::cast(relative_to),
+            round_result.record.time_duration, method_name),
+        {});
+  } else {
+    // a. Let balanceResult be ? BalanceTimeDuration(roundResult.[[Days]],
+    // roundResult.[[Hours]], roundResult.[[Minutes]], roundResult.[[Seconds]],
+    // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
+    // roundResult.[[Nanoseconds]], largestUnit).
+    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+        isolate, balance_result,
+        BalanceTimeDuration(isolate, largest_unit,
+                            round_result.record.time_duration, method_name),
+        {});
+  }
+  // 25. Let result be ? BalanceDateDurationRelative(roundResult.[[Years]],
+  // roundResult.[[Months]], roundResult.[[Weeks]], balanceResult.[[Days]],
   // largestUnit, relativeTo).
   DateDurationRecord result;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, result,
-      BalanceDurationRelative(isolate,
-                              {adjust_result.years, adjust_result.months,
-                               adjust_result.weeks, balance_result.days},
-                              largest_unit, relative_to, method_name),
-      Handle<JSTemporalDuration>{});
+      BalanceDateDurationRelative(
+          isolate,
+          {round_result.record.years, round_result.record.months,
+           round_result.record.weeks, balance_result.days},
+          largest_unit, relative_to, method_name),
+      {});
   // 26. Return ! CreateTemporalDuration(result.[[Years]], result.[[Months]],
   // result.[[Weeks]], result.[[Days]], balanceResult.[[Hours]],
   // balanceResult.[[Minutes]], balanceResult.[[Seconds]],
@@ -7704,15 +7796,14 @@ MaybeHandle<Object> JSTemporalDuration::Total(
           unit, relative_to, method_name),
       Handle<Object>());
 
-  // 9. Let intermediate be undefined.
-  Handle<Object> intermediate = factory->undefined_value();
-
+  BalancePossiblyInfiniteTimeDurationResult balance_result;
   // 8. If relativeTo has an [[InitializedTemporalZonedDateTime]] internal slot,
   // then
   if (IsJSTemporalZonedDateTime(*relative_to)) {
     // a. Set intermediate to ? MoveRelativeZonedDateTime(relativeTo,
     // unbalanceResult.[[Years]], unbalanceResult.[[Months]],
     // unbalanceResult.[[Weeks]], 0).
+    Handle<JSTemporalZonedDateTime> intermediate;
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, intermediate,
         MoveRelativeZonedDateTime(
@@ -7721,26 +7812,43 @@ MaybeHandle<Object> JSTemporalDuration::Total(
              unbalance_result.weeks, 0},
             method_name),
         Object);
+    // 1. Let balanceResult be ?
+    // BalancePossiblyInfiniteTimeDurationRelative(unbalanceResult.[[Days]],
+    // duration.[[Hours]], duration.[[Minutes]], duration.[[Seconds]],
+    // duration.[[Milliseconds]], duration.[[Microseconds]],
+    // duration.[[Nanoseconds]], _unit_, _intermediate_).
+    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+        isolate, balance_result,
+        BalancePossiblyInfiniteTimeDurationRelative(
+            isolate, unit, intermediate,
+            {unbalance_result.days, Object::Number(duration->hours()),
+             Object::Number(duration->minutes()),
+             Object::Number(duration->seconds()),
+             Object::Number(duration->milliseconds()),
+             Object::Number(duration->microseconds()),
+             Object::Number(duration->nanoseconds())},
+            method_name),
+        {});
+  } else {
+    // a. Let balanceResult be ?
+    // BalancePossiblyInfiniteDuration(unbalanceResult.[[Days]],
+    // duration.[[Hours]], duration.[[Minutes]], duration.[[Seconds]],
+    // duration.[[Milliseconds]], duration.[[Microseconds]],
+    // duration.[[Nanoseconds]], unit, intermediate).
+    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+        isolate, balance_result,
+        BalancePossiblyInfiniteTimeDuration(
+            isolate, unit,
+            {unbalance_result.days, Object::Number(duration->hours()),
+             Object::Number(duration->minutes()),
+             Object::Number(duration->seconds()),
+             Object::Number(duration->milliseconds()),
+             Object::Number(duration->microseconds()),
+             Object::Number(duration->nanoseconds())},
+            method_name),
+        {});
   }
 
-  // 11. Let balanceResult be ?
-  // BalancePossiblyInfiniteDuration(unbalanceResult.[[Days]],
-  // duration.[[Hours]], duration.[[Minutes]], duration.[[Seconds]],
-  // duration.[[Milliseconds]], duration.[[Microseconds]],
-  // duration.[[Nanoseconds]], unit, intermediate).
-  BalancePossiblyInfiniteDurationResult balance_result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, balance_result,
-      BalancePossiblyInfiniteDuration(
-          isolate, unit, intermediate,
-          {unbalance_result.days, Object::Number(duration->hours()),
-           Object::Number(duration->minutes()),
-           Object::Number(duration->seconds()),
-           Object::Number(duration->milliseconds()),
-           Object::Number(duration->microseconds()),
-           Object::Number(duration->nanoseconds())},
-          method_name),
-      Handle<Object>());
   // 12. If balanceResult is positive overflow, return +∞𝔽.
   if (balance_result.overflow == BalanceOverflow::kPositive) {
     return factory->infinity_value();
@@ -8408,8 +8516,8 @@ Maybe<DurationRecord> DifferenceZonedDateTime(
   // 11. Let timeDifference be ! BalanceDuration(0, 0, 0, 0, 0, 0,
   // result.[[Nanoseconds]], "hour").
   TimeDurationRecord time_difference =
-      BalanceDuration(isolate, Unit::kHour,
-                      {0, 0, 0, 0, 0, 0, result.nanoseconds}, method_name)
+      BalanceTimeDuration(isolate, Unit::kHour,
+                          {0, 0, 0, 0, 0, 0, result.nanoseconds}, method_name)
           .ToChecked();
 
   // 12. Return ! CreateDurationRecord(dateDifference.[[Years]],
@@ -8458,8 +8566,8 @@ Maybe<DurationRecord> AddDuration(Isolate* isolate, const DurationRecord& dur1,
     // internally to avoid overflow the double.
     MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
         isolate, result.time_duration,
-        BalanceDuration(isolate, largest_unit, dur1.time_duration,
-                        dur2.time_duration, method_name),
+        BalanceTimeDuration(isolate, largest_unit, dur1.time_duration,
+                            dur2.time_duration, method_name),
         Nothing<DurationRecord>());
 
     // c. Return ! CreateDurationRecord(0, 0, 0, result.[[Days]],
@@ -8547,8 +8655,8 @@ Maybe<DurationRecord> AddDuration(Isolate* isolate, const DurationRecord& dur1,
     time_dur2.days = 0;
     MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
         isolate, result.time_duration,
-        BalanceDuration(isolate, largest_unit, time_dur1, time_dur2,
-                        method_name),
+        BalanceTimeDuration(isolate, largest_unit, time_dur1, time_dur2,
+                            method_name),
         Nothing<DurationRecord>());
     // l. Return ! CreateDurationRecord(dateDifference.[[Years]],
     // dateDifference.[[Months]], dateDifference.[[Weeks]], result.[[Days]],
@@ -10134,7 +10242,7 @@ MaybeHandle<JSTemporalPlainDate> JSTemporalCalendar::DateAdd(
   TimeDurationRecord balance_result;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, balance_result,
-      BalanceDuration(
+      BalanceTimeDuration(
           isolate, Unit::kDay,
           {Object::Number(duration->days()), Object::Number(duration->hours()),
            Object::Number(duration->minutes()),
@@ -13268,8 +13376,8 @@ MaybeHandle<JSTemporalDuration> DifferenceTemporalPlainDateTime(
   // roundResult.[[Nanoseconds]], settings.[[LargestUnit]]).
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, round_result.record.time_duration,
-      BalanceDuration(isolate, settings.largest_unit,
-                      round_result.record.time_duration, method_name),
+      BalanceTimeDuration(isolate, settings.largest_unit,
+                          round_result.record.time_duration, method_name),
       Handle<JSTemporalDuration>());
   // 9. Return ! CreateTemporalDuration(sign × roundResult.[[Years]], sign ×
   // roundResult.[[Months]], sign × roundResult.[[Weeks]], sign ×
@@ -14152,7 +14260,8 @@ AddDurationToOrSubtractDurationFromPlainYearMonth(
   TimeDurationRecord balance_result;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, balance_result,
-      BalanceDuration(isolate, Unit::kDay, duration.time_duration, method_name),
+      BalanceTimeDuration(isolate, Unit::kDay, duration.time_duration,
+                          method_name),
       Handle<JSTemporalPlainYearMonth>());
   // 4. Set options to ? GetOptionsObject(options).
   Handle<JSReceiver> options;
@@ -15125,8 +15234,8 @@ MaybeHandle<JSTemporalDuration> DifferenceTemporalPlainTime(
   // result.[[Nanoseconds]], settings.[[LargestUnit]]).
   result.record.time_duration.days = 0;
   result.record.time_duration =
-      BalanceDuration(isolate, settings.largest_unit,
-                      result.record.time_duration, method_name)
+      BalanceTimeDuration(isolate, settings.largest_unit,
+                          result.record.time_duration, method_name)
           .ToChecked();
 
   // 7. Return ! CreateTemporalDuration(0, 0, 0, 0, sign × result.[[Hours]],
@@ -18591,9 +18700,8 @@ TimeDurationRecord DifferenceInstant(Isolate* isolate, Handle<BigInt> ns1,
   // roundResult.[[Minutes]], roundResult.[[Seconds]],
   // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
   // roundResult.[[Nanoseconds]], largestUnit).
-  return BalanceDuration(isolate, largest_unit,
-                         isolate->factory()->undefined_value(),
-                         round_record.record.time_duration, method_name)
+  return BalanceTimeDuration(isolate, largest_unit,
+                             round_record.record.time_duration, method_name)
       .ToChecked();
 }
 

@@ -7608,56 +7608,40 @@ MaybeHandle<JSTemporalDuration> JSTemporalDuration::Round(
                                 rounding_increment, smallest_unit,
                                 rounding_mode, relative_to, method_name),
       Handle<JSTemporalDuration>());
-  // 24. Let balanceResult be ? BalanceDurationRelative(adjustResult.[[Years]],
-  // adjustResult.[[Months]], adjustResult.[[Weeks]], adjustResult.[[Days]],
-  // largestUnit, relativeTo).
-  DateDurationRecord balance_result;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, balance_result,
-      BalanceDurationRelative(
-          isolate,
-          {adjust_result.years, adjust_result.months, adjust_result.weeks,
-           adjust_result.time_duration.days},
-          largest_unit, relative_to, method_name),
-      Handle<JSTemporalDuration>());
-  // 25. If Type(relativeTo) is Object and relativeTo has an
-  // [[InitializedTemporalZonedDateTime]] internal slot, then
-  if (IsJSTemporalZonedDateTime(*relative_to)) {
-    // a. Set relativeTo to ? MoveRelativeZonedDateTime(relativeTo,
-    // balanceResult.[[Years]], balanceResult.[[Months]],
-    // balanceResult.[[Weeks]], 0).
-    ASSIGN_RETURN_ON_EXCEPTION(
-        isolate, relative_to,
-        MoveRelativeZonedDateTime(
-            isolate, Handle<JSTemporalZonedDateTime>::cast(relative_to),
-            {balance_result.years, balance_result.months, balance_result.weeks,
-             0},
-            method_name),
-        JSTemporalDuration);
-  }
-  // 26. Let result be ? BalanceDuration(balanceResult.[[Days]],
+  // 24. Let balanceResult be ? BalanceDuration(adjustResult.[[Days]],
   // adjustResult.[[Hours]], adjustResult.[[Minutes]], adjustResult.[[Seconds]],
   // adjustResult.[[Milliseconds]], adjustResult.[[Microseconds]],
   // adjustResult.[[Nanoseconds]], largestUnit, relativeTo).
-  TimeDurationRecord result;
+  TimeDurationRecord balance_result;
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, balance_result,
+      BalanceDuration(isolate, largest_unit, relative_to,
+                      adjust_result.time_duration, method_name),
+      Handle<JSTemporalDuration>{});
+  // 25. Let result be ? BalanceDurationRelative(adjustResult.[[Years]],
+  // adjustResult.[[Months]], adjustResult.[[Weeks]], balanceResult.[[Days]],
+  // largestUnit, relativeTo).
+  DateDurationRecord result;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, result,
-      BalanceDuration(isolate, largest_unit, relative_to,
-                      {balance_result.days, adjust_result.time_duration.hours,
-                       adjust_result.time_duration.minutes,
-                       adjust_result.time_duration.seconds,
-                       adjust_result.time_duration.milliseconds,
-                       adjust_result.time_duration.microseconds,
-                       adjust_result.time_duration.nanoseconds},
-                      method_name),
-      Handle<JSTemporalDuration>());
-  // 27. Return ! CreateTemporalDuration(balanceResult.[[Years]],
-  // balanceResult.[[Months]], balanceResult.[[Weeks]], result.[[Days]],
-  // result.[[Hours]], result.[[Minutes]], result.[[Seconds]],
-  // result.[[Milliseconds]], result.[[Microseconds]], result.[[Nanoseconds]]).
-  return CreateTemporalDuration(isolate,
-                                {balance_result.years, balance_result.months,
-                                 balance_result.weeks, result})
+      BalanceDurationRelative(isolate,
+                              {adjust_result.years, adjust_result.months,
+                               adjust_result.weeks, balance_result.days},
+                              largest_unit, relative_to, method_name),
+      Handle<JSTemporalDuration>{});
+  // 26. Return ! CreateTemporalDuration(result.[[Years]], result.[[Months]],
+  // result.[[Weeks]], result.[[Days]], balanceResult.[[Hours]],
+  // balanceResult.[[Minutes]], balanceResult.[[Seconds]],
+  // balanceResult.[[Milliseconds]], balanceResult.[[Microseconds]],
+  // balanceResult.[[Nanoseconds]]).
+  return CreateTemporalDuration(
+             isolate,
+             {result.years,
+              result.months,
+              result.weeks,
+              {result.days, balance_result.hours, balance_result.minutes,
+               balance_result.seconds, balance_result.milliseconds,
+               balance_result.microseconds, balance_result.nanoseconds}})
       .ToHandleChecked();
 }
 

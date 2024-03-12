@@ -7687,16 +7687,27 @@ MaybeHandle<JSTemporalDuration> JSTemporalDuration::Round(
                                   rounding_increment, smallest_unit,
                                   rounding_mode, relative_to, method_name),
         {});
-    // b. Let balanceResult be ? BalanceDuration(roundResult.[[Days]],
-    // roundResult.[[Hours]], roundResult.[[Minutes]], roundResult.[[Seconds]],
-    // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
-    // roundResult.[[Nanoseconds]], largestUnit, relativeTo).
+    // b. Let intermediate be ? MoveRelativeZonedDateTime(zonedRelativeTo,
+    // calendarRec, timeZoneRec, roundResult.[[Years]], roundResult.[[Months]],
+    // roundResult.[[Weeks]], 0, precalculatedPlainDateTime).
+    Handle<JSTemporalZonedDateTime> intermediate;
+    ASSIGN_RETURN_ON_EXCEPTION(
+        isolate, intermediate,
+        MoveRelativeZonedDateTime(
+            isolate, Handle<JSTemporalZonedDateTime>::cast(relative_to),
+            {round_result.record.years, round_result.record.months,
+             round_result.record.weeks, 0},
+            method_name),
+        JSTemporalDuration);
+    // b. Let balanceResult be ?
+    // BalanceTimeDurationRelative(roundResult.[[Days]],
+    // roundResult.[[NormalizedTime]], largestUnit, intermediate, timeZoneRec,
+    // precalculatedPlainDateTime).
     MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
         isolate, balance_result,
-        BalanceTimeDurationRelative(
-            isolate, largest_unit,
-            Handle<JSTemporalZonedDateTime>::cast(relative_to),
-            round_result.record.time_duration, method_name),
+        BalanceTimeDurationRelative(isolate, largest_unit, intermediate,
+                                    round_result.record.time_duration,
+                                    method_name),
         {});
   } else {
     // a. Let balanceResult be ? BalanceTimeDuration(roundResult.[[Days]],

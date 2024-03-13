@@ -14216,8 +14216,6 @@ AddDurationToOrSubtractDurationFromPlainYearMonth(
                             RequiredFields::kNone),
       JSTemporalPlainYearMonth);
 
-  // 11. Let fieldsCopy be ! SnapshotOwnProperties(fields, null).
-  Handle<JSObject> fields_copy = SnapshotOwnProperties(isolate, fields);
   // 12. Perform ! CreateDataPropertyOrThrow(fields, "day", 1𝔽).
   Handle<Object> one = handle(Smi::FromInt(1), isolate);
   CHECK(JSReceiver::CreateDataProperty(isolate, fields, factory->day_string(),
@@ -14253,32 +14251,12 @@ AddDurationToOrSubtractDurationFromPlainYearMonth(
     DateRecord end_of_month_iso = BalanceISODate(
         isolate, {next_month->iso_year(), next_month->iso_month(),
                   next_month->iso_day() - 1});
-    // d. Let endOfMonth be ? CreateTemporalDate(endOfMonthISO.[[Year]],
+    // d. Let date be ? CreateTemporalDate(endOfMonthISO.[[Year]],
     // endOfMonthISO.[[Month]], endOfMonthISO.[[Day]],
     // calendarRec.[[Receiver]]).
-    Handle<JSTemporalPlainDate> end_of_month;
     ASSIGN_RETURN_ON_EXCEPTION(
-        isolate, end_of_month,
-        CreateTemporalDate(isolate, end_of_month_iso, calendar),
+        isolate, date, CreateTemporalDate(isolate, end_of_month_iso, calendar),
         JSTemporalPlainYearMonth);
-    // e. Let day be ? CalendarDay(calendarRec, endOfMonth).
-    Handle<Object> day;
-    ASSIGN_RETURN_ON_EXCEPTION(
-        isolate, day, temporal::CalendarDay(isolate, calendar, end_of_month),
-        JSTemporalPlainYearMonth);
-    // f. Perform ! CreateDataPropertyOrThrow(fieldsCopy, "day", day).
-    CHECK(JSReceiver::CreateDataProperty(isolate, fields_copy,
-                                         factory->day_string(), day,
-                                         Just(kThrowOnError))
-              .FromJust());
-    // g. Let date be ? CalendarDateFromFields(calendarRec, fieldsCopy).
-    ASSIGN_RETURN_ON_EXCEPTION(isolate, date,
-                               FromFields<JSTemporalPlainDate>(
-                                   isolate, calendar, fields_copy,
-                                   isolate->factory()->undefined_value(),
-                                   isolate->factory()->dateFromFields_string(),
-                                   JS_TEMPORAL_PLAIN_DATE_TYPE),
-                               JSTemporalPlainYearMonth);
     // 15. Else,
   } else {
     // a. Let date be intermediateDate.

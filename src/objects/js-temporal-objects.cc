@@ -14142,6 +14142,20 @@ MaybeHandle<Oddball> JSTemporalPlainYearMonth::Equals(
 
 namespace {
 
+Handle<JSObject> SnapshotOwnProperties(Isolate* isolate,
+                                       Handle<JSReceiver> source) {
+  // 1. Let copy be OrdinaryObjectCreate(proto).
+  Handle<JSObject> copy = isolate->factory()->NewJSObjectWithNullProto();
+  // 2. If excludedKeys is not present, set excludedKeys to « ».
+  // 3. If excludedValues is not present, set excludedValues to « ».
+  // 4. Perform ? CopyDataProperties(copy, source, excludedKeys, excludedValues)
+  JSReceiver::SetOrCopyDataProperties(
+      isolate, copy, source, PropertiesEnumerationMode::kEnumerationOrder)
+      .ToChecked();
+  // 5. Return copy.
+  return copy;
+}
+
 MaybeHandle<JSTemporalPlainYearMonth>
 AddDurationToOrSubtractDurationFromPlainYearMonth(
     Isolate* isolate, Arithmetic operation,
@@ -14161,31 +14175,40 @@ AddDurationToOrSubtractDurationFromPlainYearMonth(
     // a. Set duration to ! CreateNegatedDurationRecord(duration).
     duration = CreateNegatedDurationRecord(isolate, duration).ToChecked();
   }
-  // 3. Let balanceResult be ? BalanceDuration(duration.[[Days]],
-  // duration.[[Hours]], duration.[[Minutes]], duration.[[Seconds]],
-  // duration.[[Milliseconds]], duration.[[Microseconds]],
-  // duration.[[Nanoseconds]], "day").
+  // 3. Set options to ? GetOptionsObject(options).
+  Handle<JSReceiver> options;
+  ASSIGN_RETURN_ON_EXCEPTION(
+      isolate, options, GetOptionsObject(isolate, options_obj, method_name),
+      JSTemporalPlainYearMonth);
+  // 4. Let norm be NormalizeTimeDuration(duration.[[Hours]],
+  // duration.[[Minutes]], duration.[[Seconds]], duration.[[Milliseconds]],
+  // duration.[[Microseconds]], duration.[[Nanoseconds]]).
+  // 5. Let balanceResult be BalanceTimeDuration(norm, "day").
+  // 6. Let days be duration.[[Days]] + balanceResult.[[Days]].
   TimeDurationRecord balance_result;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
       isolate, balance_result,
       BalanceDuration(isolate, Unit::kDay, duration.time_duration, method_name),
       Handle<JSTemporalPlainYearMonth>());
-  // 4. Set options to ? GetOptionsObject(options).
-  Handle<JSReceiver> options;
-  ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, options, GetOptionsObject(isolate, options_obj, method_name),
-      JSTemporalPlainYearMonth);
-  // 5. Let calendar be yearMonth.[[Calendar]].
+  // 7. Let sign be ! DurationSign(duration.[[Years]], duration.[[Months]],
+  // duration.[[Weeks]], days, 0, 0, 0, 0, 0, 0).
+  int32_t sign =
+      DurationSign(isolate, {duration.years,
+                             duration.months,
+                             duration.weeks,
+                             {balance_result.days, 0, 0, 0, 0, 0, 0}});
+  // 8. Let calendarRec be ? CreateCalendarMethodsRecord(yearMonth.[[Calendar]],
+  // « date-add, date-from-fields, day, fields, year-month-from-fields »).
   Handle<JSReceiver> calendar(year_month->calendar(), isolate);
 
-  // 6. Let fieldNames be ? CalendarFields(calendar, « "monthCode", "year" »).
+  // 9. Let fieldNames be ? CalendarFields(calendar, « "monthCode", "year" »).
   Factory* factory = isolate->factory();
   Handle<FixedArray> field_names = MonthCodeYearInFixedArray(isolate);
   ASSIGN_RETURN_ON_EXCEPTION(isolate, field_names,
                              CalendarFields(isolate, calendar, field_names),
                              JSTemporalPlainYearMonth);
 
-  // 7. Let fields be ? PrepareTemporalFields(yearMonth, fieldNames, «»).
+  // 10. Let fields be ? PrepareTemporalFields(yearMonth, fieldNames, «»).
   Handle<JSReceiver> fields;
   ASSIGN_RETURN_ON_EXCEPTION(
       isolate, fields,
@@ -14193,81 +14216,92 @@ AddDurationToOrSubtractDurationFromPlainYearMonth(
                             RequiredFields::kNone),
       JSTemporalPlainYearMonth);
 
-  // 8. Set sign to ! DurationSign(duration.[[Years]], duration.[[Months]],
-  // duration.[[Weeks]], balanceResult.[[Days]], 0, 0, 0, 0, 0, 0).
-  int32_t sign =
-      DurationSign(isolate, {duration.years,
-                             duration.months,
-                             duration.weeks,
-                             {balance_result.days, 0, 0, 0, 0, 0, 0}});
-
-  // 9. If sign < 0, then
-  Handle<Object> day;
-  if (sign < 0) {
-    // a. Let dayFromCalendar be ? CalendarDaysInMonth(calendar, yearMonth).
-    Handle<Object> day_from_calendar;
-    ASSIGN_RETURN_ON_EXCEPTION(
-        isolate, day_from_calendar,
-        temporal::CalendarDaysInMonth(isolate, calendar, year_month),
-        JSTemporalPlainYearMonth);
-
-    // b. Let day be ? ToPositiveInteger(dayFromCalendar).
-    ASSIGN_RETURN_ON_EXCEPTION(isolate, day,
-                               ToPositiveInteger(isolate, day_from_calendar),
-                               JSTemporalPlainYearMonth);
-    // 10. Else,
-  } else {
-    // a. Let day be 1.
-    day = handle(Smi::FromInt(1), isolate);
-  }
-  // 11. Perform ! CreateDataPropertyOrThrow(fields, "day", day).
+  // 11. Let fieldsCopy be ! SnapshotOwnProperties(fields, null).
+  Handle<JSObject> fields_copy = SnapshotOwnProperties(isolate, fields);
+  // 12. Perform ! CreateDataPropertyOrThrow(fields, "day", 1𝔽).
+  Handle<Object> one = handle(Smi::FromInt(1), isolate);
   CHECK(JSReceiver::CreateDataProperty(isolate, fields, factory->day_string(),
-                                       day, Just(kThrowOnError))
+                                       one, Just(kThrowOnError))
             .FromJust());
 
-  // 12. Let date be ? CalendarDateFromFields(calendar, fields).
-  Handle<JSTemporalPlainDate> date;
+  // 13. Let intermediateDate be ? CalendarDateFromFields(calendarRec, fields).
+  Handle<JSTemporalPlainDate> intermediate_date;
   ASSIGN_RETURN_ON_EXCEPTION(
-      isolate, date,
+      isolate, intermediate_date,
       FromFields<JSTemporalPlainDate>(
           isolate, calendar, fields, isolate->factory()->undefined_value(),
           isolate->factory()->dateFromFields_string(),
           JS_TEMPORAL_PLAIN_DATE_TYPE),
       JSTemporalPlainYearMonth);
 
-  // 13. Let durationToAdd be ! CreateTemporalDuration(duration.[[Years]],
-  // duration.[[Months]], duration.[[Weeks]], balanceResult.[[Days]], 0, 0, 0,
-  // 0, 0, 0).
+  // 14. If sign < 0, then
+  Handle<JSTemporalPlainDate> date;
+  if (sign < 0) {
+    // a. Let oneMonthDuration be ! CreateTemporalDuration(0, 1, 0, 0, 0, 0, 0,
+    // 0, 0, 0).
+    Handle<JSTemporalDuration> one_month =
+        CreateTemporalDuration(isolate, {0, 1, 0, {}}).ToHandleChecked();
+    // b. Let nextMonth be ? CalendarDateAdd(calendarRec, intermediateDate,
+    // oneMonthDuration).
+    Handle<JSTemporalPlainDate> next_month;
+    ASSIGN_RETURN_ON_EXCEPTION(
+        isolate, next_month,
+        CalendarDateAdd(isolate, calendar, intermediate_date, one_month),
+        JSTemporalPlainYearMonth);
+    // c. Let endOfMonthISO be BalanceISODate(nextMonth.[[ISOYear]],
+    // nextMonth.[[ISOMonth]], nextMonth.[[ISODay]] - 1).
+    DateRecord end_of_month_iso = BalanceISODate(
+        isolate, {next_month->iso_year(), next_month->iso_month(),
+                  next_month->iso_day() - 1});
+    // d. Let endOfMonth be ? CreateTemporalDate(endOfMonthISO.[[Year]],
+    // endOfMonthISO.[[Month]], endOfMonthISO.[[Day]],
+    // calendarRec.[[Receiver]]).
+    Handle<JSTemporalPlainDate> end_of_month;
+    ASSIGN_RETURN_ON_EXCEPTION(
+        isolate, end_of_month,
+        CreateTemporalDate(isolate, end_of_month_iso, calendar),
+        JSTemporalPlainYearMonth);
+    // e. Let day be ? CalendarDay(calendarRec, endOfMonth).
+    Handle<Object> day;
+    ASSIGN_RETURN_ON_EXCEPTION(
+        isolate, day, temporal::CalendarDay(isolate, calendar, end_of_month),
+        JSTemporalPlainYearMonth);
+    // f. Perform ! CreateDataPropertyOrThrow(fieldsCopy, "day", day).
+    CHECK(JSReceiver::CreateDataProperty(isolate, fields_copy,
+                                         factory->day_string(), day,
+                                         Just(kThrowOnError))
+              .FromJust());
+    // g. Let date be ? CalendarDateFromFields(calendarRec, fieldsCopy).
+    ASSIGN_RETURN_ON_EXCEPTION(isolate, date,
+                               FromFields<JSTemporalPlainDate>(
+                                   isolate, calendar, fields_copy,
+                                   isolate->factory()->undefined_value(),
+                                   isolate->factory()->dateFromFields_string(),
+                                   JS_TEMPORAL_PLAIN_DATE_TYPE),
+                               JSTemporalPlainYearMonth);
+    // 15. Else,
+  } else {
+    // a. Let date be intermediateDate.
+    date = intermediate_date;
+  }
+  // 16. Let durationToAdd be ! CreateTemporalDuration(duration.[[Years]],
+  // duration.[[Months]], duration.[[Weeks]], days, 0, 0, 0, 0, 0, 0).
   Handle<JSTemporalDuration> duration_to_add =
       CreateTemporalDuration(isolate, {duration.years,
                                        duration.months,
                                        duration.weeks,
                                        {balance_result.days, 0, 0, 0, 0, 0, 0}})
           .ToHandleChecked();
-  // 14. Let optionsCopy be OrdinaryObjectCreate(null).
-  Handle<JSReceiver> options_copy =
-      isolate->factory()->NewJSObjectWithNullProto();
 
-  // 15. Let entries be ? EnumerableOwnPropertyNames(options, key+value).
-  // 16. For each element nextEntry of entries, do
-  // a. Perform ! CreateDataPropertyOrThrow(optionsCopy, nextEntry[0],
-  // nextEntry[1]).
-  bool set;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, set,
-      JSReceiver::SetOrCopyDataProperties(
-          isolate, options_copy, options,
-          PropertiesEnumerationMode::kEnumerationOrder, nullptr, false),
-      Handle<JSTemporalPlainYearMonth>());
-
-  // 17. Let addedDate be ? CalendarDateAdd(calendar, date, durationToAdd,
-  // options).
+  // 17. Let optionsCopy be ? SnapshotOwnProperties(options, null).
+  Handle<JSObject> options_copy = SnapshotOwnProperties(isolate, options);
+  // 18. Let addedDate be ? AddDate(calendarRec, date, durationToAdd, options).
   Handle<JSTemporalPlainDate> added_date;
   ASSIGN_RETURN_ON_EXCEPTION(
       isolate, added_date,
       CalendarDateAdd(isolate, calendar, date, duration_to_add, options),
       JSTemporalPlainYearMonth);
-  // 18. Let addedDateFields be ? PrepareTemporalFields(addedDate, fieldNames,
+  // 19. Let addedDateFields be ? PrepareTemporalFields(addedDate, fieldNames,
   // «»).
   Handle<JSReceiver> added_date_fields;
   ASSIGN_RETURN_ON_EXCEPTION(
@@ -14275,7 +14309,7 @@ AddDurationToOrSubtractDurationFromPlainYearMonth(
       PrepareTemporalFields(isolate, added_date, field_names,
                             RequiredFields::kNone),
       JSTemporalPlainYearMonth);
-  // 19. Return ? CalendarYearMonthFromFields(calendar, addedDateFields,
+  // 20. Return ? CalendarYearMonthFromFields(calendarRec, addedDateFields,
   // optionsCopy).
   return FromFields<JSTemporalPlainYearMonth>(
       isolate, calendar, added_date_fields, options_copy,
@@ -16297,23 +16331,26 @@ MaybeHandle<BigInt> InterpretISODateTimeOffset(
     const char* method_name) {
   TEMPORAL_ENTER_FUNC();
 
-  // 1. Assert: offsetNanoseconds is an integer or undefined.
-  // 2. Let calendar be ! GetISO8601Calendar().
+  // 1. Assert: IsValidISODate(year, month, day) is true.
+  // 2. Assert: TimeZoneMethodsRecordHasLookedUp(timeZoneRec,
+  // get-offset-nanoseconds-for) is true.
+  // 3. Assert: TimeZoneMethodsRecordHasLookedUp(timeZoneRec,
+  // get-possible-instants-for) is true.
+  // 4. Let dateTime be ? CreateTemporalDateTime(year, month, day, hour, minute,
+  // second, millisecond, microsecond, nanosecond, "iso8601").
   Handle<JSReceiver> calendar = temporal::GetISO8601Calendar(isolate);
-
-  // 3. Let dateTime be ? CreateTemporalDateTime(year, month, day, hour, minute,
-  // second, millisecond, microsecond, nanosecond, calendar).
   Handle<JSTemporalPlainDateTime> date_time;
   ASSIGN_RETURN_ON_EXCEPTION(isolate, date_time,
                              temporal::CreateTemporalDateTime(
                                  isolate, {data.date, data.time}, calendar),
                              BigInt);
 
-  // 4. If offsetBehaviour is wall, or offsetOption is "ignore", then
+  // 5. If offsetBehaviour is wall, or offsetBehaviour is option and
+  // offsetOption is "ignore", then
   if (offset_behaviour == OffsetBehaviour::kWall ||
-      offset_option == Offset::kIgnore) {
-    // a. Let instant be ? BuiltinTimeZoneGetInstantFor(timeZone, dateTime,
-    // disambiguation).
+      (offset_behaviour == OffsetBehaviour::kOption &&
+       offset_option == Offset::kIgnore)) {
+    // a. Let instant be ? GetInstantFor(timeZoneRec, dateTime, disambiguation).
     Handle<JSTemporalInstant> instant;
     ASSIGN_RETURN_ON_EXCEPTION(
         isolate, instant,
@@ -16323,80 +16360,81 @@ MaybeHandle<BigInt> InterpretISODateTimeOffset(
     // b. Return instant.[[Nanoseconds]].
     return handle(instant->nanoseconds(), isolate);
   }
-  // 5. If offsetBehaviour is exact, or offsetOption is "use", then
+  // 6. If offsetBehaviour is exact, or offsetBehaviour is option and
+  // offsetOption is "use", then
   if (offset_behaviour == OffsetBehaviour::kExact ||
-      offset_option == Offset::kUse) {
-    // a. Let epochNanoseconds be ? GetEpochFromISOParts(year, month, day, hour,
-    // minute, second, millisecond, microsecond, nanosecond).
+      (offset_behaviour == OffsetBehaviour::kOption &&
+       offset_option == Offset::kUse)) {
+    // a. Let epochNanoseconds be GetUTCEpochNanoseconds(year, month, day, hour.
+    // minute, second, millisecond, microsecond, nanosecond, offsetNanoseconds).
     Handle<BigInt> epoch_nanoseconds =
         GetEpochFromISOParts(isolate, {data.date, data.time});
-
-    // b. Set epochNanoseconds to epochNanoseconds - ℤ(offsetNanoseconds).
     epoch_nanoseconds =
         BigInt::Subtract(isolate, epoch_nanoseconds,
                          BigInt::FromInt64(isolate, offset_nanoseconds))
             .ToHandleChecked();
-    // c. If ! IsValidEpochNanoseconds(epochNanoseconds) is false, throw a
+    // b. If IsValidEpochNanoseconds(epochNanoseconds) is false, throw a
     // RangeError exception.
     if (!IsValidEpochNanoseconds(isolate, epoch_nanoseconds)) {
       THROW_NEW_ERROR(isolate, NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(), BigInt);
     }
-    // d. Return epochNanoseconds.
+    // c. Return epochNanoseconds.
     return epoch_nanoseconds;
   }
-  // 6. Assert: offsetBehaviour is option.
+  // 7. Assert: offsetBehaviour is option.
   DCHECK_EQ(offset_behaviour, OffsetBehaviour::kOption);
-  // 7. Assert: offsetOption is "prefer" or "reject".
+  // 8. Assert: offsetOption is "prefer" or "reject".
   DCHECK(offset_option == Offset::kPrefer || offset_option == Offset::kReject);
-  // 8. Let possibleInstants be ? GetPossibleInstantsFor(timeZone, dateTime).
+  // 9. Let possibleInstants be ? GetPossibleInstantsFor(timeZoneRec, dateTime).
   Handle<FixedArray> possible_instants;
   ASSIGN_RETURN_ON_EXCEPTION(
       isolate, possible_instants,
       GetPossibleInstantsFor(isolate, time_zone, date_time), BigInt);
 
-  // 9. For each element candidate of possibleInstants, do
+  // 10. If possibleInstants is not empty, then
+  // a. For each element candidate of possibleInstants, do
   for (int i = 0; i < possible_instants->length(); i++) {
     DCHECK(IsJSTemporalInstant(possible_instants->get(i)));
     Handle<JSTemporalInstant> candidate(
         JSTemporalInstant::cast(possible_instants->get(i)), isolate);
-    // a. Let candidateNanoseconds be ? GetOffsetNanosecondsFor(timeZone,
+    // i. Let candidateNanoseconds be ? GetOffsetNanosecondsFor(timeZoneRec,
     // candidate).
     int64_t candidate_nanoseconds;
     MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
         isolate, candidate_nanoseconds,
         GetOffsetNanosecondsFor(isolate, time_zone, candidate, method_name),
         Handle<BigInt>());
-    // b. If candidateNanoseconds = offsetNanoseconds, then
+    // ii. If candidateNanoseconds = offsetNanoseconds, then
     if (candidate_nanoseconds == offset_nanoseconds) {
-      // i. Return candidate.[[Nanoseconds]].
+      // 1. Return candidate.[[Nanoseconds]].
       return Handle<BigInt>(candidate->nanoseconds(), isolate);
     }
-    // c. If matchBehaviour is match minutes, then
+    // iii. If matchBehaviour is match minutes, then
     if (match_behaviour == MatchBehaviour::kMatchMinutes) {
-      // i. Let roundedCandidateNanoseconds be !
+      // 1. Let roundedCandidateNanoseconds be !
       // RoundNumberToIncrement(candidateNanoseconds, 60 × 10^9, "halfExpand").
       double rounded_candidate_nanoseconds = RoundNumberToIncrement(
           isolate, candidate_nanoseconds, 6e10, RoundingMode::kHalfExpand);
-      // ii. If roundedCandidateNanoseconds = offsetNanoseconds, then
+      // 2. If roundedCandidateNanoseconds = offsetNanoseconds, then
       if (rounded_candidate_nanoseconds == offset_nanoseconds) {
-        // 1. Return candidate.[[Nanoseconds]].
+        // a. Return candidate.[[Nanoseconds]].
         return Handle<BigInt>(candidate->nanoseconds(), isolate);
       }
     }
   }
-  // 10. If offsetOption is "reject", throw a RangeError exception.
+  // 11. If offsetOption is "reject", throw a RangeError exception.
   if (offset_option == Offset::kReject) {
     THROW_NEW_ERROR(isolate, NEW_TEMPORAL_INVALID_ARG_RANGE_ERROR(), BigInt);
   }
-  // 11. Let instant be ? DisambiguatePossibleInstants(possibleInstants,
-  // timeZone, dateTime, disambiguation).
+  // 12. Let instant be ? DisambiguatePossibleInstants(possibleInstants,
+  // timeZoneRec, dateTime, disambiguation).
   Handle<JSTemporalInstant> instant;
   ASSIGN_RETURN_ON_EXCEPTION(
       isolate, instant,
       DisambiguatePossibleInstants(isolate, possible_instants, time_zone,
                                    date_time, disambiguation, method_name),
       BigInt);
-  // 12. Return instant.[[Nanoseconds]].
+  // 13. Return instant.[[Nanoseconds]].
   return Handle<BigInt>(instant->nanoseconds(), isolate);
 }
 

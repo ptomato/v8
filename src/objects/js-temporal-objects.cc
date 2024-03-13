@@ -6636,12 +6636,10 @@ Handle<BigInt> RoundTemporalInstant(Isolate* isolate, Handle<BigInt> ns,
                                     RoundingMode rounding_mode);
 
 // #sec-temporal-differenceinstant
-TimeDurationRecord DifferenceInstant(Isolate* isolate, Handle<BigInt> ns1,
-                                     Handle<BigInt> ns2,
-                                     double rounding_increment,
-                                     Unit smallest_unit, Unit largest_unit,
-                                     RoundingMode rounding_mode,
-                                     const char* method_name);
+DurationRecordWithRemainder DifferenceInstant(
+    Isolate* isolate, Handle<BigInt> ns1, Handle<BigInt> ns2,
+    double rounding_increment, Unit smallest_unit, Unit largest_unit,
+    RoundingMode rounding_mode, const char* method_name);
 
 // #sec-temporal-differencezoneddatetime
 Maybe<DurationRecord> DifferenceZonedDateTime(
@@ -8714,7 +8712,8 @@ Maybe<DurationRecord> AddDuration(Isolate* isolate, const DurationRecord& dur1,
     result.time_duration =
         DifferenceInstant(isolate, handle(relative_to->nanoseconds(), isolate),
                           end_ns, 1, Unit::kNanosecond, largest_unit,
-                          RoundingMode::kHalfExpand, method_name);
+                          RoundingMode::kHalfExpand, method_name)
+            .record.time_duration;
     // b. Return ! CreateDurationRecord(0, 0, 0, 0, result.[[Hours]],
     // result.[[Minutes]], result.[[Seconds]], result.[[Milliseconds]],
     // result.[[Microseconds]], result.[[Nanoseconds]]).
@@ -13298,6 +13297,114 @@ MaybeHandle<JSTemporalPlainDateTime> JSTemporalPlainDateTime::Subtract(
 
 namespace {
 
+Maybe<DurationRecordWithRemainder> DifferencePlainDateTimeWithRounding(
+    Isolate* isolate, Handle<JSTemporalPlainDate> plain_date1,
+    const TimeRecord& time1, const DateTimeRecord& date_time2,
+    Unit largest_unit, double rounding_increment, Unit smallest_unit,
+    RoundingMode rounding_mode, Handle<JSReceiver> resolved_options,
+    const char* method_name) {
+  // 1. Let y1 be plainDate1.[[ISOYear]].
+  // 2. Let mon1 be plainDate1.[[ISOMonth]].
+  // 3. Let d1 be plainDate1.[[ISODay]].
+  DateRecord date1{plain_date1->iso_year(), plain_date1->iso_month(),
+                   plain_date1->iso_day()};
+  // 4. If CompareISODateTime(y1, mon1, d1, h1, min1, s1, ms1, mus1, ns1, y2,
+  // mon2, d2, h2, min2, s2, ms2, mus2, ns2) = 0, then
+  if (CompareISODateTime({date1, time1}, date_time2) == 0) {
+    // a. Let durationRecord be CreateDurationRecord(0, 0, 0, 0, 0, 0, 0, 0, 0,
+    // 0).
+    // b. Return the Record { [[DurationRecord]]: durationRecord, [[Total]]: 0
+    // }.
+    return Just(DurationRecordWithRemainder{{}, 0});
+  }
+
+  // 5. Let diff be ? DifferenceISODateTime(y1, mon1, d1, h1, min1, s1, ms1,
+  // mus1, ns1, y2, mon2, d2, h2, min2, s2, ms2, mus2, ns2, calendarRec,
+  // largestUnit, resolvedOptions).
+  DurationRecord diff;
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, diff,
+      DifferenceISODateTime(isolate, {date1, time1}, date_time2,
+                            handle(plain_date1->calendar(), isolate),
+                            largest_unit, resolved_options, method_name),
+      Nothing<DurationRecordWithRemainder>());
+  // 6. If _smallestUnit_ is *"nanosecond"* and _roundingIncrement_ = 1, then
+  if (smallest_unit == Unit::kNanosecond && rounding_increment == 1.0) {
+    // a. Let normWithDays be ?
+    // Add24HourDaysToNormalizedTimeDuration(diff.[[NormalizedTime]],
+    // diff.[[Days]]).
+    // b. Let timeResult be BalanceTimeDuration(normWithDays, largestUnit).
+    TimeDurationRecord time_result;
+    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+        isolate, time_result,
+        BalanceTimeDuration(isolate, largest_unit, diff.time_duration,
+                            method_name),
+        Nothing<DurationRecordWithRemainder>());
+    // c. Let total be NormalizedTimeDurationSeconds(normWithDays) × 10⁹ +
+    // NormalizedTimeDurationSubseconds(normWithDays).
+    Handle<BigInt> total = TotalDurationNanoseconds(isolate, time_result, 0);
+    // d. Let durationRecord be CreateDurationRecord(diff.[[Years]],
+    // diff.[[Months]], diff.[[Weeks]], timeResult.[[Days]],
+    // timeResult.[[Hours]], timeResult.[[Minutes]], timeResult.[[Seconds]],
+    // timeResult.[[Milliseconds]], timeResult.[[Microseconds]],
+    // timeResult.[[Nanoseconds]]).
+    // e. Return the Record { [[DurationRecord]]: durationRecord, [[Total]]:
+    // total }.
+    return Just(DurationRecordWithRemainder{
+        {diff.years, diff.months, diff.weeks, time_result},
+        Object::Number(*BigInt::ToNumber(isolate, total))});
+  }
+
+  // 7. Let roundRecord be ? RoundDuration(diff.[[Years]], diff.[[Months]],
+  // diff.[[Weeks]], diff.[[Days]], diff.[[NormalizedTime]], roundingIncrement,
+  // _smallestUnit_, _roundingMode_, _plainDate1_, _calendarRec_).
+  DurationRecordWithRemainder round_record;
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, round_record,
+      RoundDuration(isolate, diff, rounding_increment, smallest_unit,
+                    rounding_mode, method_name),
+      Nothing<DurationRecordWithRemainder>());
+  // 8. Let _roundResult_ be _roundRecord_.[[NormalizedDuration]].
+  DurationRecord round_result = round_record.record;
+  // 9. Let normWithDays be ?
+  // Add24HourDaysToNormalizedTimeDuration(roundResult.[[NormalizedTime]],
+  // roundResult.[[Days]]).
+  // 10. Let _timeResult_ be BalanceTimeDuration(_normWithDays_, _largestUnit_).
+  TimeDurationRecord time_result;
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, time_result,
+      BalanceTimeDuration(isolate, largest_unit,
+                          round_record.record.time_duration, method_name),
+      Nothing<DurationRecordWithRemainder>());
+  // 11. Let balanceResult be ?
+  // BalanceDateDurationRelative(roundResult.[[Years]], roundResult.[[Months]],
+  // roundResult.[[Weeks]], timeResult.[[Days]], largestUnit, smallestUnit,
+  // plainDate1, calendarRec).
+  DateDurationRecord balance_result;
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, balance_result,
+      BalanceDateDurationRelative(isolate,
+                                  {round_result.years, round_result.months,
+                                   round_result.weeks, time_result.days},
+                                  largest_unit, plain_date1, method_name),
+      Nothing<DurationRecordWithRemainder>());
+  // 12. Let durationRecord be CreateDurationRecord(balanceResult.[[Years]],
+  // balanceResult.[[Months]], balanceResult.[[Weeks]], balanceResult.[[Days]],
+  // _timeResult_.[[Hours]], _timeResult_.[[Minutes]], _timeResult_.[[Seconds]],
+  // _timeResult_.[[Milliseconds]], _timeResult_.[[Microseconds]],
+  // _timeResult_.[[Nanoseconds]]).
+  // 13. Return the Record { [[DurationRecord]]: _durationRecord_, [[Total]]:
+  // _roundRecord_.[[Total]] }.
+  return Just(DurationRecordWithRemainder{
+      {balance_result.years,
+       balance_result.months,
+       balance_result.weeks,
+       {balance_result.days, time_result.hours, time_result.minutes,
+        time_result.seconds, time_result.milliseconds, time_result.microseconds,
+        time_result.nanoseconds}},
+      round_record.remainder});
+}
+
 // #sec-temporal-differencetemporalplaindatetime
 MaybeHandle<JSTemporalDuration> DifferenceTemporalPlainDateTime(
     Isolate* isolate, TimePreposition operation,
@@ -13332,80 +13439,58 @@ MaybeHandle<JSTemporalDuration> DifferenceTemporalPlainDateTime(
                             DisallowedUnitsInDifferenceSettings::kNone,
                             Unit::kNanosecond, Unit::kDay, method_name),
       Handle<JSTemporalDuration>());
-  // 5. Let diff be ? DifferenceISODateTime(dateTime.[[ISOYear]],
-  // dateTime.[[ISOMonth]], dateTime.[[ISODay]], dateTime.[[ISOHour]],
-  // dateTime.[[ISOMinute]], dateTime.[[ISOSecond]],
-  // dateTime.[[ISOMillisecond]], dateTime.[[ISOMicrosecond]],
-  // dateTime.[[ISONanosecond]], other.[[ISOYear]], other.[[ISOMonth]],
-  // other.[[ISODay]], other.[[ISOHour]], other.[[ISOMinute]],
-  // other.[[ISOSecond]], other.[[ISOMillisecond]], other.[[ISOMicrosecond]],
-  // other.[[ISONanosecond]], dateTime.[[Calendar]], settings.[[LargestUnit]],
-  // settings.[[Options]]).
-  DurationRecord diff;
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, diff,
-      DifferenceISODateTime(
-          isolate,
-          {{date_time->iso_year(), date_time->iso_month(),
-            date_time->iso_day()},
-           {date_time->iso_hour(), date_time->iso_minute(),
-            date_time->iso_second(), date_time->iso_millisecond(),
-            date_time->iso_microsecond(), date_time->iso_nanosecond()}},
-          {{other->iso_year(), other->iso_month(), other->iso_day()},
-           {other->iso_hour(), other->iso_minute(), other->iso_second(),
-            other->iso_millisecond(), other->iso_microsecond(),
-            other->iso_nanosecond()}},
-          handle(date_time->calendar(), isolate), settings.largest_unit,
-          settings.options, method_name),
-      Handle<JSTemporalDuration>());
-  // 6. Let relativeTo be ! CreateTemporalDate(dateTime.[[ISOYear]],
+  // 1. Let plainDate be ! CreateTemporalDate(dateTime.[[ISOYear]],
   // dateTime.[[ISOMonth]], dateTime.[[ISODay]], dateTime.[[Calendar]]).
-  Handle<JSTemporalPlainDate> relative_to;
+  Handle<JSTemporalPlainDate> plain_date;
   ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, relative_to,
+      isolate, plain_date,
       CreateTemporalDate(
           isolate,
           {date_time->iso_year(), date_time->iso_month(), date_time->iso_day()},
           handle(date_time->calendar(), isolate)),
-      Handle<JSTemporalDuration>());
-  // 7. Let roundResult be (? RoundDuration(diff.[[Years]], diff.[[Months]],
-  // diff.[[Weeks]], diff.[[Days]], diff.[[Hours]], diff.[[Minutes]],
-  // diff.[[Seconds]], diff.[[Milliseconds]], diff.[[Microseconds]],
-  // diff.[[Nanoseconds]], settings.[[RoundingIncrement]],
-  // settings.[[SmallestUnit]], settings.[[RoundingMode]],
-  // relativeTo)).[[DurationRecord]].
-  DurationRecordWithRemainder round_result;
+      {});
+  // 1. Let _resultRecord_ be ? DifferencePlainDateTimeWithRounding(_plainDate_,
+  // dateTime.[[ISOHour]], _dateTime_.[[ISOMinute]], _dateTime_.[[ISOSecond]],
+  // dateTime.[[ISOMillisecond]], _dateTime_.[[ISOMicrosecond]],
+  // dateTime.[[ISONanosecond]], _other_.[[ISOYear]], _other_.[[ISOMonth]],
+  // other.[[ISODay]], _other_.[[ISOHour]], _other_.[[ISOMinute]],
+  // other.[[ISOSecond]], other.[[ISOMillisecond]], _other_.[[ISOMicrosecond]],
+  // other.[[ISONanosecond]], calendarRec, settings.[[LargestUnit]],
+  // _settings_.[[RoundingIncrement]], _settings_.[[SmallestUnit]],
+  // _settings_.[[RoundingMode]], _resolvedOptions_).
+  DurationRecordWithRemainder result_record;
   MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, round_result,
-      RoundDuration(isolate, diff, settings.rounding_increment,
-                    settings.smallest_unit, settings.rounding_mode, relative_to,
-                    method_name),
-      Handle<JSTemporalDuration>());
-  // 8. Let result be ? BalanceDuration(roundResult.[[Days]],
-  // roundResult.[[Hours]], roundResult.[[Minutes]], roundResult.[[Seconds]],
-  // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
-  // roundResult.[[Nanoseconds]], settings.[[LargestUnit]]).
-  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-      isolate, round_result.record.time_duration,
-      BalanceTimeDuration(isolate, settings.largest_unit,
-                          round_result.record.time_duration, method_name),
-      Handle<JSTemporalDuration>());
+      isolate, result_record,
+      DifferencePlainDateTimeWithRounding(
+          isolate, plain_date,
+          {date_time->iso_hour(), date_time->iso_minute(),
+           date_time->iso_second(), date_time->iso_millisecond(),
+           date_time->iso_microsecond(), date_time->iso_nanosecond()},
+          {{other->iso_year(), other->iso_month(), other->iso_day()},
+           {other->iso_hour(), other->iso_minute(), other->iso_second(),
+            other->iso_millisecond(), other->iso_microsecond(),
+            other->iso_nanosecond()}},
+          settings.largest_unit, settings.rounding_increment,
+          settings.smallest_unit, settings.rounding_mode, settings.options,
+          method_name),
+      {});
+  DurationRecord result = result_record.record;
   // 9. Return ! CreateTemporalDuration(sign × roundResult.[[Years]], sign ×
   // roundResult.[[Months]], sign × roundResult.[[Weeks]], sign ×
   // result.[[Days]], sign × result.[[Hours]], sign × result.[[Minutes]], sign ×
   // result.[[Seconds]], sign × result.[[Milliseconds]], sign ×
   // result.[[Microseconds]], sign × result.[[Nanoseconds]]).
-  return CreateTemporalDuration(
-             isolate, {sign * round_result.record.years,
-                       sign * round_result.record.months,
-                       sign * round_result.record.weeks,
-                       {sign * round_result.record.time_duration.days,
-                        sign * round_result.record.time_duration.hours,
-                        sign * round_result.record.time_duration.minutes,
-                        sign * round_result.record.time_duration.seconds,
-                        sign * round_result.record.time_duration.milliseconds,
-                        sign * round_result.record.time_duration.microseconds,
-                        sign * round_result.record.time_duration.nanoseconds}})
+  return CreateTemporalDuration(isolate,
+                                {sign * result.years,
+                                 sign * result.months,
+                                 sign * result.weeks,
+                                 {sign * result.time_duration.days,
+                                  sign * result.time_duration.hours,
+                                  sign * result.time_duration.minutes,
+                                  sign * result.time_duration.seconds,
+                                  sign * result.time_duration.milliseconds,
+                                  sign * result.time_duration.microseconds,
+                                  sign * result.time_duration.nanoseconds}})
       .ToHandleChecked();
 }
 
@@ -17402,6 +17487,93 @@ MaybeHandle<JSTemporalZonedDateTime> JSTemporalZonedDateTime::Subtract(
 
 namespace {
 
+inline bool IsCalendarUnit(Unit unit) {
+  return unit == Unit::kYear || unit == Unit::kMonth || unit == Unit::kWeek;
+}
+
+Maybe<DurationRecordWithRemainder> DifferenceZonedDateTimeWithRounding(
+  Isolate* isolate, Handle<BigInt> ns1, Handle<BigInt> ns2,
+  Handle<JSTemporalPlainDate> plain_relative_to,
+  Handle<JSTemporalZonedDateTime> zoned_date_time,
+  Handle<JSReceiver> resolved_options, Unit largest_unit,
+  double rounding_increment, Unit smallest_unit, RoundingMode rounding_mode,
+  const char* method_name) {
+  // 1. If IsCalendarUnit(largestUnit) is false and largestUnit is not "day",
+  // then
+  if (!IsCalendarUnit(largest_unit) && largest_unit != Unit::kDay) {
+    // a. Let diffRecord be DifferenceInstant(ns1, ns2, roundingIncrement,
+    // smallestUnit, roundingMode).
+    // b. Let norm be diffRecord.[[NormalizedTimeDuration]].
+    // c. Let result be BalanceTimeDuration(norm, largestUnit).
+    // d. Let durationRecord be CreateDurationRecord(0, 0, 0, 0,
+    // result.[[Hours]], result.[[Minutes]], result.[[Seconds]],
+    // result.[[Milliseconds]], result.[[Microseconds]],
+    // result.[[Nanoseconds]]).
+    // e. Return the Record { [[DurationRecord]]: durationRecord, [[Total]]:
+    // diffRecord.[[Total]] }.
+    return Just(DifferenceInstant(isolate, ns1, ns2, rounding_increment, smallest_unit, largest_unit, rounding_mode, method_name));
+  }
+  // 2. Let difference be ? DifferenceZonedDateTime(ns1, ns2, timeZoneRec,
+  // calendarRec, largestUnit, resolvedOptions, precalculatedPlainDateTime).
+  DurationRecord difference;
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, difference,
+      DifferenceZonedDateTime(isolate, ns1, ns2,
+                              handle(zoned_date_time->time_zone(), isolate),
+                              handle(zoned_date_time->calendar(), isolate),
+                              largest_unit, resolved_options, method_name),
+      Nothing<DurationRecordWithRemainder>());
+  // 1. If smallestUnit is *"nanosecond"* and roundingIncrement is 1, let
+  // roundingGranularityIsNoop be *true*; else let roundingGranularityIsNoop be
+  // *false*.
+  bool rounding_granularity_is_noop =
+      smallest_unit == Unit::kNanosecond && rounding_increment == 1.0;
+  // 1. If roundingGranularityIsNoop is *true*, then
+  if (rounding_granularity_is_noop) {
+    // 1. Let timeResult be BalanceTimeDuration(difference.[[NormalizedTime]],
+    // *"hour"*).
+    TimeDurationRecord time_result;
+    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+        isolate, time_result,
+        BalanceTimeDuration(isolate, Unit::kHour, difference.time_duration,
+                            method_name),
+        Nothing<DurationRecordWithRemainder>());
+    // 1. Let total be
+    // NormalizedTimeDurationSeconds(difference.[[NormalizedTime]]) × 10⁹ +
+    // NormalizedTimeDurationSubseconds(difference.[[NormalizedTime]]).
+    Handle<BigInt> total = TotalDurationNanoseconds(isolate, time_result, 0);
+    // 1. Let durationRecord be CreateDurationRecord(difference.[[Years]],
+    // difference.[[Months]], difference.[[Weeks]], difference.[[Days]],
+    // timeResult.[[Hours]], timeResult.[[Minutes]], timeResult.[[Seconds]],
+    // timeResult.[[Milliseconds]], timeResult.[[Microseconds]],
+    // timeResult.[[Nanoseconds]]).
+    // 1. Return the Record { [[DurationRecord]]: durationRecord, [[Total]]:
+    // total }.
+    return Just(DurationRecordWithRemainder{
+        {difference.years, difference.months, difference.weeks, time_result},
+        Object::Number(*BigInt::ToNumber(isolate, total))});
+  }
+  // 1. Let roundRecord be ? RoundDuration(difference.[[Years]],
+  // difference.[[Months]], difference.[[Weeks]], difference.[[Days]],
+  // difference.[[NormalizedTime]], roundingIncrement, smallestUnit,
+  // roundingMode, plainRelativeTo, calendarRec, zonedDateTime, timeZoneRec,
+  // precalculatedPlainDateTime).
+  DurationRecordWithRemainder round_record;
+  MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
+      isolate, round_record,
+      RoundDuration(isolate, difference, rounding_increment, smallest_unit,
+                    rounding_mode, method_name),
+      Nothing<DurationRecordWithRemainder>());
+  // 1. Let roundResult be roundRecord.[[NormalizedDuration]].
+  DurationRecord round_result = round_record.record;
+  // 1. Let adjustResult be ? AdjustRoundedDurationDays(roundResult.[[Years]], roundResult.[[Months]], roundResult.[[Weeks]], roundResult.[[Days]], roundResult.[[NormalizedTime]], roundingIncrement, smallestUnit, roundingMode, zonedDateTime, calendarRec, timeZoneRec, precalculatedPlainDateTime).
+  // 1. Let balanceResult be ? BalanceDateDurationRelative(adjustResult.[[Years]], adjustResult.[[Months]], adjustResult.[[Weeks]], adjustResult.[[Days]], largestUnit, smallestUnit, plainRelativeTo, calendarRec).
+  // 1. Set result to ? CombineDateAndNormalizedTimeDuration(balanceResult, adjustResult.[[NormalizedTime]]).
+  // 1. Let timeResult be BalanceTimeDuration(result.[[NormalizedTime]], *"hour"*).
+  // 1. Let durationRecord be CreateDurationRecord(result.[[Years]], result.[[Months]], result.[[Weeks]], result.[[Days]], timeResult.[[Hours]], timeResult.[[Minutes]], timeResult.[[Seconds]], timeResult.[[Milliseconds]], timeResult.[[Microseconds]], timeResult.[[Nanoseconds]]).
+  // 1. Return the Record { [[DurationRecord]]: durationRecord, [[Total]]: roundRecord.[[Total]] }.
+}
+
 // #sec-temporal-differencetemporalzoneddatetime
 MaybeHandle<JSTemporalDuration> DifferenceTemporalZonedDateTime(
     Isolate* isolate, TimePreposition operation,
@@ -17452,7 +17624,7 @@ MaybeHandle<JSTemporalDuration> DifferenceTemporalZonedDateTime(
         isolate, handle(zoned_date_time->nanoseconds(), isolate),
         handle(other->nanoseconds(), isolate), settings.rounding_increment,
         settings.smallest_unit, settings.largest_unit, settings.rounding_mode,
-        method_name);
+        method_name).record.time_duration;
     // d. Return ! CreateTemporalDuration(0, 0, 0, 0, sign ×
     // balanceResult.[[Hours]], sign × balanceResult.[[Minutes]], sign ×
     // balanceResult.[[Seconds]], sign × balanceResult.[[Milliseconds]], sign ×
@@ -18675,12 +18847,10 @@ Maybe<DifferenceSettings> GetDifferenceSettings(
 }
 
 // #sec-temporal-differenceinstant
-TimeDurationRecord DifferenceInstant(Isolate* isolate, Handle<BigInt> ns1,
-                                     Handle<BigInt> ns2,
-                                     double rounding_increment,
-                                     Unit smallest_unit, Unit largest_unit,
-                                     RoundingMode rounding_mode,
-                                     const char* method_name) {
+DurationRecordWithRemainder DifferenceInstant(
+    Isolate* isolate, Handle<BigInt> ns1, Handle<BigInt> ns2,
+    double rounding_increment, Unit smallest_unit, Unit largest_unit,
+    RoundingMode rounding_mode, const char* method_name) {
   // 1. Assert: Type(ns1) is BigInt.
   // 2. Assert: Type(ns2) is BigInt.
   // 3. Assert: The following step cannot fail due to overflow in the Number
@@ -18711,9 +18881,11 @@ TimeDurationRecord DifferenceInstant(Isolate* isolate, Handle<BigInt> ns1,
   // roundResult.[[Minutes]], roundResult.[[Seconds]],
   // roundResult.[[Milliseconds]], roundResult.[[Microseconds]],
   // roundResult.[[Nanoseconds]], largestUnit).
-  return BalanceTimeDuration(isolate, largest_unit,
-                             round_record.record.time_duration, method_name)
-      .ToChecked();
+  TimeDurationRecord balance_result =
+      BalanceTimeDuration(isolate, largest_unit,
+                          round_record.record.time_duration, method_name)
+          .ToChecked();
+  return {{0, 0, 0, balance_result}, round_record.remainder};
 }
 
 // #sec-temporal-differencetemporalinstant
@@ -18746,7 +18918,7 @@ MaybeHandle<JSTemporalDuration> DifferenceTemporalInstant(
       isolate, handle(instant->nanoseconds(), isolate),
       handle(other->nanoseconds(), isolate), settings.rounding_increment,
       settings.smallest_unit, settings.largest_unit, settings.rounding_mode,
-      method_name);
+      method_name).record.time_duration;
   // 5. Return ! CreateTemporalDuration(0, 0, 0, 0, sign × result.[[Hours]],
   // sign × result.[[Minutes]], sign × result.[[Seconds]], sign ×
   // result.[[Milliseconds]], sign × result.[[Microseconds]], sign ×

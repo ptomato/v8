@@ -16370,33 +16370,32 @@ MaybeHandle<BigInt> InterpretISODateTimeOffset(
       GetPossibleInstantsFor(isolate, time_zone, date_time), BigInt);
 
   // 10. If possibleInstants is not empty, then
-  // a. For each element candidate of possibleInstants, do
-  for (int i = 0; i < possible_instants->length(); i++) {
-    DCHECK(IsJSTemporalInstant(possible_instants->get(i)));
-    Handle<JSTemporalInstant> candidate(
-        JSTemporalInstant::cast(possible_instants->get(i)), isolate);
-    // i. Let candidateNanoseconds be ? GetOffsetNanosecondsFor(timeZoneRec,
-    // candidate).
-    int64_t candidate_nanoseconds;
-    MAYBE_ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate, candidate_nanoseconds,
-        GetOffsetNanosecondsFor(isolate, time_zone, candidate, method_name),
-        Handle<BigInt>());
-    // ii. If candidateNanoseconds = offsetNanoseconds, then
-    if (candidate_nanoseconds == offset_nanoseconds) {
-      // 1. Return candidate.[[Nanoseconds]].
-      return Handle<BigInt>(candidate->nanoseconds(), isolate);
-    }
-    // iii. If matchBehaviour is match minutes, then
-    if (match_behaviour == MatchBehaviour::kMatchMinutes) {
-      // 1. Let roundedCandidateNanoseconds be !
-      // RoundNumberToIncrement(candidateNanoseconds, 60 × 10^9, "halfExpand").
-      double rounded_candidate_nanoseconds = RoundNumberToIncrement(
-          isolate, candidate_nanoseconds, 6e10, RoundingMode::kHalfExpand);
-      // 2. If roundedCandidateNanoseconds = offsetNanoseconds, then
-      if (rounded_candidate_nanoseconds == offset_nanoseconds) {
-        // a. Return candidate.[[Nanoseconds]].
-        return Handle<BigInt>(candidate->nanoseconds(), isolate);
+  if (possible_instants->length() > 0) {
+    Handle<BigInt> utc_epoch_ns = GetEpochFromISOParts(isolate, {data.date, data.time});
+    // a. For each element candidate of possibleInstants, do
+    for (int i = 0; i < possible_instants->length(); i++) {
+      DCHECK(IsJSTemporalInstant(possible_instants->get(i)));
+      Handle<JSTemporalInstant> candidate(
+          JSTemporalInstant::cast(possible_instants->get(i)), isolate);
+      Handle<BigInt> candidate_epoch_ns{candidate->nanoseconds(), isolate};
+      Handle<BigInt> candidate_ns_bigint = 
+        BigInt::Subtract(isolate, utc_epoch_ns, candidate_epoch_ns)
+            .ToHandleChecked();
+      int64_t candidate_nanoseconds = candidate_ns_bigint->AsInt64();
+      if (candidate_nanoseconds == offset_nanoseconds) {
+        return candidate_epoch_ns;
+      }
+      // iii. If matchBehaviour is match minutes, then
+      if (match_behaviour == MatchBehaviour::kMatchMinutes) {
+        // 1. Let roundedCandidateNanoseconds be !
+        // RoundNumberToIncrement(candidateNanoseconds, 60 × 10^9, "halfExpand").
+        double rounded_candidate_nanoseconds = RoundNumberToIncrement(
+            isolate, candidate_nanoseconds, 6e10, RoundingMode::kHalfExpand);
+        // 2. If roundedCandidateNanoseconds = offsetNanoseconds, then
+        if (rounded_candidate_nanoseconds == offset_nanoseconds) {
+          // a. Return candidate.[[Nanoseconds]].
+          return candidate_epoch_ns;
+        }
       }
     }
   }
